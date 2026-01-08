@@ -39,7 +39,7 @@
   become_user: "{{ clawdbot_user }}"
   environment:
     PNPM_HOME: "{{ clawdbot_home }}/.local/share/pnpm"
-    PATH: "{{ clawdbot_home }}/.local/bin:{{ ansible_env.PATH }}"
+    PATH: "{{ clawdbot_home }}/.local/bin:/usr/local/bin:/usr/bin:/bin"
 
 - name: Configure .bashrc for clawdbot user
   ansible.builtin.blockinfile:
