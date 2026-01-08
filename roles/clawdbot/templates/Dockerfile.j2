@@ -8,30 +8,25 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     && rm -rf /var/lib/apt/lists/*
 
-# Install pnpm
-RUN npm install -g pnpm
-
-# Clone Clawdbot from GitHub
-WORKDIR /app
-RUN git clone https://github.com/clawdbot/clawdbot.git . && \
-    pnpm install && \
-    pnpm build
+# Install pnpm and clawdbot globally
+RUN npm install -g pnpm && \
+    pnpm add -g clawdbot@latest
 
 # Create user and directories
 RUN useradd -m -s /bin/bash clawdbot && \
     mkdir -p /home/clawdbot/.clawdbot/sessions /home/clawdbot/.clawdbot/credentials && \
-    chown -R clawdbot:clawdbot /home/clawdbot/.clawdbot /app
+    chown -R clawdbot:clawdbot /home/clawdbot/.clawdbot
 
 # Switch to clawdbot user
 USER clawdbot
-WORKDIR /app
+WORKDIR /home/clawdbot
 
 # Expose default port (only accessible via localhost binding)
 EXPOSE {{ clawdbot_port }}
 
 # Healthcheck
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD test -f /app/package.json || exit 1
+    CMD clawdbot --version || exit 1
 
-# Run Clawdbot
-CMD ["node", "dist/index.js"]
+# Keep container running (clawdbot needs to be started manually or via entrypoint)
+CMD ["sh", "-c", "while true; do sleep 3600; done"]
