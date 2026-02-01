@@ -48,7 +48,7 @@ ports:
 
 ## Layer 4: Non-Root Container
 
-Container processes run as unprivileged `clawdbot` user.
+Container processes run as unprivileged `openclaw` user.
 
 ## Verification
 
@@ -73,7 +73,7 @@ curl http://localhost:80        # Should work
 
 ## Tailscale Access
 
-Clawdbot's web interface (port 3000) is bound to localhost. Access it via:
+OpenClaw's web interface (port 3000) is bound to localhost. Access it via:
 
 1. **SSH tunnel**:
    ```bash
@@ -85,7 +85,7 @@ Clawdbot's web interface (port 3000) is bound to localhost. Access it via:
    ```bash
    # On server: already done by playbook
    sudo tailscale up
-   
+
    # From your machine:
    # Browse to http://TAILSCALE_IP:3000
    ```
