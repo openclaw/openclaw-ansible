@@ -1,25 +1,25 @@
 [Unit]
-Description=Clawdbot WhatsApp Gateway
+Description=OpenClaw WhatsApp Gateway
 After=network.target docker.service
 Requires=docker.service
 
 [Service]
 Type=simple
-User={{ clawdbot_user }}
-Group={{ clawdbot_user }}
-WorkingDirectory={{ clawdbot_home }}
+User={{ openclaw_user }}
+Group={{ openclaw_user }}
+WorkingDirectory={{ openclaw_home }}
 
 # Environment variables
-Environment="PATH={{ clawdbot_home }}/.local/bin:/home/linuxbrew/.linuxbrew/bin:/usr/local/bin:/usr/bin:/bin"
-Environment="PNPM_HOME={{ clawdbot_home }}/.local/share/pnpm"
-Environment="HOME={{ clawdbot_home }}"
+Environment="PATH={{ openclaw_home }}/.local/bin:/home/linuxbrew/.linuxbrew/bin:/usr/local/bin:/usr/bin:/bin"
+Environment="PNPM_HOME={{ openclaw_home }}/.local/share/pnpm"
+Environment="HOME={{ openclaw_home }}"
 Environment="XDG_RUNTIME_DIR=/run/user/1000"
 
 # DBus session bus
 Environment="DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus"
 
 # Start command
-ExecStart={{ clawdbot_home }}/.local/bin/clawdbot gateway
+ExecStart={{ openclaw_home }}/.local/bin/openclaw gateway
 
 # Restart policy
 Restart=always
@@ -30,12 +30,12 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=read-only
-ReadWritePaths={{ clawdbot_home }}/.clawdbot
+ReadWritePaths={{ openclaw_home }}/.openclaw
 
 # Logging
 StandardOutput=journal
 StandardError=journal
-SyslogIdentifier=clawdbot
+SyslogIdentifier=openclaw
 
 [Install]
 WantedBy=multi-user.target
