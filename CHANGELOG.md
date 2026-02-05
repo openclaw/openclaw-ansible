@@ -11,15 +11,15 @@
 - **Automatic OS detection** with proper fallback
 
 #### Installation Modes
-- **Release Mode** (default): Install via `pnpm install -g clawdbot@latest`
+- **Release Mode** (default): Install via `pnpm install -g openclaw@latest`
 - **Development Mode**: Clone repo, build from source, symlink binary
-- Switch modes with `-e clawdbot_install_mode=development`
-- Development aliases: `clawdbot-rebuild`, `clawdbot-dev`, `clawdbot-pull`
+- Switch modes with `-e openclaw_install_mode=development`
+- Development aliases: `openclaw-rebuild`, `openclaw-dev`, `openclaw-pull`
 
 #### System Improvements
 - **apt update & upgrade** runs automatically at start (Debian/Ubuntu)
 - **Homebrew integrated** in PATH for all users
-- **pnpm package manager** used for Clawdbot installation
+- **pnpm package manager** used for OpenClaw installation
 
 ### 🐛 Bug Fixes
 
@@ -31,34 +31,34 @@
    - **No more manual** `eval $(dbus-launch --sh-syntax)` needed!
 
 2. **User Switching Command** ✅
-   - Fixed: Changed from `sudo -i -u clawdbot` to `sudo su - clawdbot`
+   - Fixed: Changed from `sudo -i -u openclaw` to `sudo su - openclaw`
    - Ensures proper login shell with .bashrc loading
-   - Alternative documented: `sudo -u clawdbot -i`
+   - Alternative documented: `sudo -u openclaw -i`
 
-3. **Clawdbot Installation** ✅
-   - Changed: `pnpm add -g` → `pnpm install -g clawdbot@latest`
+3. **OpenClaw Installation** ✅
+   - Changed: `pnpm add -g` → `pnpm install -g openclaw@latest`
    - Added installation verification
    - Added version display
 
 4. **Configuration Management** ✅
    - Removed automatic config.yml creation
    - Removed automatic systemd service installation
-   - Let `clawdbot onboard --install-daemon` handle setup
+   - Let `openclaw onboard --install-daemon` handle setup
    - Only create directory structure
 
 ### 📦 New Files Created
 
 #### OS-Specific Task Files
 ```
-roles/clawdbot/tasks/
+roles/openclaw/tasks/
 ├── system-tools-linux.yml      # apt-based tool installation
 ├── system-tools-macos.yml      # brew-based tool installation
 ├── docker-linux.yml            # Docker CE installation
 ├── docker-macos.yml            # Docker Desktop installation
 ├── firewall-linux.yml          # UFW configuration
 ├── firewall-macos.yml          # Application Firewall config
-├── clawdbot-release.yml        # Release mode installation
-└── clawdbot-development.yml    # Development mode installation
+├── openclaw-release.yml        # Release mode installation
+└── openclaw-development.yml    # Development mode installation
 ```
 
 #### Documentation
@@ -73,7 +73,7 @@ roles/clawdbot/tasks/
   - Added OS detection (is_macos, is_debian, is_linux, is_redhat)
   - Added apt update/upgrade at start
   - Added Homebrew installation
-  - Enhanced welcome message with `clawdbot onboard --install-daemon`
+  - Enhanced welcome message with `openclaw onboard --install-daemon`
   - Removed automatic config.yml creation
   
 - **install.sh**
@@ -89,40 +89,40 @@ roles/clawdbot/tasks/
 - **README.md**
   - Updated for multi-OS support
   - Added OS-specific requirements
-  - Updated quick-start with `clawdbot onboard --install-daemon`
+  - Updated quick-start with `openclaw onboard --install-daemon`
   - Added Homebrew to feature list
 
 #### Role Files
-- **roles/clawdbot/defaults/main.yml**
+- **roles/openclaw/defaults/main.yml**
   - Added OS-specific variables (homebrew_prefix, package_manager)
   
-- **roles/clawdbot/tasks/main.yml**
+- **roles/openclaw/tasks/main.yml**
   - No changes (orchestrator)
 
-- **roles/clawdbot/tasks/system-tools.yml**
+- **roles/openclaw/tasks/system-tools.yml**
   - Refactored to delegate to OS-specific files
   - Added fail-safe for unsupported OS
 
-- **roles/clawdbot/tasks/docker.yml**
+- **roles/openclaw/tasks/docker.yml**
   - Refactored to delegate to OS-specific files
 
-- **roles/clawdbot/tasks/firewall.yml**
+- **roles/openclaw/tasks/firewall.yml**
   - Refactored to delegate to OS-specific files
 
-- **roles/clawdbot/tasks/user.yml**
+- **roles/openclaw/tasks/user.yml**
   - Added loginctl enable-linger
   - Added XDG_RUNTIME_DIR configuration
   - Added DBUS_SESSION_BUS_ADDRESS setup
   - Fixed systemd user service support
 
-- **roles/clawdbot/tasks/clawdbot.yml**
-  - Changed to `pnpm install -g clawdbot@latest`
+- **roles/openclaw/tasks/openclaw.yml**
+  - Changed to `pnpm install -g openclaw@latest`
   - Added installation verification
   - Removed config.yml template generation
   - Removed systemd service installation
   - Only creates directory structure
 
-- **roles/clawdbot/templates/clawdbot-host.service.j2**
+- **roles/openclaw/templates/openclaw-host.service.j2**
   - Added XDG_RUNTIME_DIR environment
   - Added DBUS_SESSION_BUS_ADDRESS
   - Added Homebrew to PATH
@@ -134,9 +134,9 @@ roles/clawdbot/tasks/
 ```bash
 # Installation
 curl -fsSL https://.../install.sh | bash
-sudo -i -u clawdbot              # ❌ Wrong command
-nano ~/.clawdbot/config.yml      # Manual config
-clawdbot login                   # Manual setup
+sudo -i -u openclaw              # ❌ Wrong command
+nano ~/.openclaw/config.yml      # Manual config
+openclaw login                   # Manual setup
 # Missing DBus setup              # ❌ Errors
 ```
 
@@ -144,8 +144,8 @@ clawdbot login                   # Manual setup
 ```bash
 # Installation
 curl -fsSL https://.../install.sh | bash
-sudo su - clawdbot               # ✅ Correct command
-clawdbot onboard --install-daemon # ✅ One command setup!
+sudo su - openclaw               # ✅ Correct command
+openclaw onboard --install-daemon # ✅ One command setup!
 # DBus auto-configured             # ✅ Works
 # Service auto-installed           # ✅ Works
 ```
@@ -153,27 +153,27 @@ clawdbot onboard --install-daemon # ✅ One command setup!
 #### New Workflow - Development Mode
 ```bash
 # Installation with development mode
-git clone https://github.com/pasogott/clawdbot-ansible.git
-cd clawdbot-ansible
-./run-playbook.sh -e clawdbot_install_mode=development
+git clone https://github.com/openclaw/openclaw-ansible.git
+cd openclaw-ansible
+./run-playbook.sh -e openclaw_install_mode=development
 
-# Switch to clawdbot user
-sudo su - clawdbot
+# Switch to openclaw user
+sudo su - openclaw
 
 # Make changes
-clawdbot-dev              # cd ~/code/clawdbot
+openclaw-dev              # cd ~/code/openclaw
 vim src/some-file.ts      # Edit code
-clawdbot-rebuild          # pnpm build
+openclaw-rebuild          # pnpm build
 
 # Test immediately
-clawdbot doctor           # Uses new build
+openclaw doctor           # Uses new build
 ```
 
 ### 🎯 User Experience Improvements
 
 #### Welcome Message
-- Shows environment status (XDG_RUNTIME_DIR, DBUS, Homebrew, Clawdbot version)
-- Recommends `clawdbot onboard --install-daemon` as primary command
+- Shows environment status (XDG_RUNTIME_DIR, DBUS, Homebrew, OpenClaw version)
+- Recommends `openclaw onboard --install-daemon` as primary command
 - Provides manual setup steps as alternative
 - Lists useful commands for troubleshooting
 
@@ -186,12 +186,12 @@ clawdbot doctor           # Uses new build
 #### Directory Structure
 Ansible creates only structure, no config files:
 ```
-~/.clawdbot/
+~/.openclaw/
 ├── sessions/       # Created (empty)
 ├── credentials/    # Created (secure: 0700)
 ├── data/          # Created (empty)
 └── logs/          # Created (empty)
-# clawdbot.json    # NOT created - user's clawdbot creates it
+# openclaw.json    # NOT created - user's openclaw creates it
 # config.yml       # NOT created - deprecated
 ```
 
@@ -200,11 +200,11 @@ Ansible creates only structure, no config files:
 #### Systemd Service Hardening
 - `ProtectSystem=strict` - System directories read-only
 - `ProtectHome=read-only` - Limited home access
-- `ReadWritePaths=~/.clawdbot` - Only config writable
+- `ReadWritePaths=~/.openclaw` - Only config writable
 - `NoNewPrivileges=true` - No privilege escalation
 
 #### User Isolation
-- Dedicated clawdbot system user
+- Dedicated openclaw system user
 - lingering enabled for systemd user services
 - Proper DBus session isolation
 - XDG_RUNTIME_DIR per-user
@@ -219,23 +219,23 @@ Ansible creates only structure, no config files:
 | Firewall | UFW | Application FW | Working |
 | systemd | ✅ | ❌ | Linux only |
 | DBus Setup | ✅ | N/A | Linux only |
-| pnpm + Clawdbot | ✅ | ✅ | Working |
+| pnpm + OpenClaw | ✅ | ✅ | Working |
 
 ### ⚠️ Breaking Changes
 
 1. **User Switch Command Changed**
-   - Old: `sudo -i -u clawdbot`
-   - New: `sudo su - clawdbot`
+   - Old: `sudo -i -u openclaw`
+   - New: `sudo su - openclaw`
    - Impact: Update documentation, scripts
 
 2. **No Auto-Configuration**
    - Old: config.yml auto-created
-   - New: User runs `clawdbot onboard`
+   - New: User runs `openclaw onboard`
    - Impact: Users must run onboard command
 
 3. **No Auto-Service Install**
    - Old: systemd service auto-installed
-   - New: `clawdbot onboard --install-daemon`
+   - New: `openclaw onboard --install-daemon`
    - Impact: Service not running after ansible
 
 ### 🔄 Migration Guide
@@ -249,7 +249,7 @@ Just run the new installer - everything works out of the box!
 echo 'export XDG_RUNTIME_DIR=/run/user/$(id -u)' >> ~/.bashrc
 
 # 2. Enable lingering
-sudo loginctl enable-linger clawdbot
+sudo loginctl enable-linger openclaw
 
 # 3. Add Homebrew (Linux)
 echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> ~/.bashrc
@@ -257,8 +257,8 @@ echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> ~/.bashrc
 # 4. Reload
 source ~/.bashrc
 
-# 5. Reinstall clawdbot
-pnpm install -g clawdbot@latest
+# 5. Reinstall openclaw
+pnpm install -g openclaw@latest
 ```
 
 ### 📚 Documentation Updates
@@ -285,7 +285,7 @@ pnpm install -g clawdbot@latest
 
 ### 🙏 Credits
 
-Based on user feedback and real-world usage patterns from the clawdbot community.
+Based on user feedback and real-world usage patterns from the openclaw community.
 
 Special thanks to early testers who identified the DBus and user switching issues!
 
