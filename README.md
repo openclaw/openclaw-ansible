@@ -1,7 +1,7 @@
 # Clawdbot Ansible Installer
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Lint](https://github.com/pasogott/clawdbot-ansible/actions/workflows/lint.yml/badge.svg)](https://github.com/pasogott/clawdbot-ansible/actions/workflows/lint.yml)
+[![Lint](https://github.com/openclaw/openclaw-ansible/actions/workflows/lint.yml/badge.svg)](https://github.com/openclaw/openclaw-ansible/actions/workflows/lint.yml)
 [![Ansible](https://img.shields.io/badge/Ansible-2.14+-blue.svg)](https://www.ansible.com/)
 [![Multi-OS](https://img.shields.io/badge/OS-Debian%20%7C%20Ubuntu%20%7C%20macOS-orange.svg)](https://www.debian.org/)
 
@@ -27,7 +27,7 @@ Automated, hardened installation of [Clawdbot](https://github.com/clawdbot/clawd
 Install the latest stable version from npm:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/pasogott/clawdbot-ansible/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/openclaw/openclaw-ansible/main/install.sh | bash
 ```
 
 ### Development Mode
@@ -36,8 +36,8 @@ Install from source for development or testing:
 
 ```bash
 # Clone the installer
-git clone https://github.com/pasogott/clawdbot-ansible.git
-cd clawdbot-ansible
+git clone https://github.com/openclaw/openclaw-ansible.git
+cd openclaw-ansible
 
 # Install in development mode
 ansible-playbook playbook.yml --ask-become-pass -e clawdbot_install_mode=development
@@ -187,8 +187,8 @@ ansible-playbook playbook.yml --ask-become-pass
 sudo apt update && sudo apt install -y ansible git
 
 # Clone repository
-git clone https://github.com/pasogott/clawdbot-ansible.git
-cd clawdbot-ansible
+git clone https://github.com/openclaw/openclaw-ansible.git
+cd openclaw-ansible
 
 # Install Ansible collections
 ansible-galaxy collection install -r requirements.yml
@@ -298,4 +298,4 @@ MIT - see [LICENSE](LICENSE)
 ## Support
 
 - Clawdbot: https://github.com/clawdbot/clawdbot
-- This installer: https://github.com/pasogott/clawdbot-ansible/issues
+- This installer: https://github.com/openclaw/openclaw-ansible/issues

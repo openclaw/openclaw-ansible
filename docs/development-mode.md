@@ -22,8 +22,8 @@ This guide explains how to install Clawdbot in **development mode**, where the a
 
 ```bash
 # Clone the ansible installer
-git clone https://github.com/pasogott/clawdbot-ansible.git
-cd clawdbot-ansible
+git clone https://github.com/openclaw/openclaw-ansible.git
+cd openclaw-ansible
 
 # Run in development mode
 ./run-playbook.sh -e clawdbot_install_mode=development
@@ -36,8 +36,8 @@ cd clawdbot-ansible
 sudo apt update && sudo apt install -y ansible git
 
 # Clone repository
-git clone https://github.com/pasogott/clawdbot-ansible.git
-cd clawdbot-ansible
+git clone https://github.com/openclaw/openclaw-ansible.git
+cd openclaw-ansible
 
 # Install collections
 ansible-galaxy collection install -r requirements.yml

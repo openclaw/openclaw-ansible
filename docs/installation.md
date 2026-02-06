@@ -8,7 +8,7 @@ description: Detailed installation and configuration instructions
 ## Quick Install
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/pasogott/clawdbot-ansible/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/openclaw/openclaw-ansible/main/install.sh | bash
 ```
 
 ## Manual Installation
@@ -23,8 +23,8 @@ sudo apt install -y ansible git
 ### Clone and Run
 
 ```bash
-git clone https://github.com/pasogott/clawdbot-ansible.git
-cd clawdbot-ansible
+git clone https://github.com/openclaw/openclaw-ansible.git
+cd openclaw-ansible
 
 # Install Ansible collections
 ansible-galaxy collection install -r requirements.yml
