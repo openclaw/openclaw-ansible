@@ -18,26 +18,30 @@
 
     - name: Detect operating system
       ansible.builtin.set_fact:
-        is_macos: "{{ ansible_os_family == 'Darwin' }}"
         is_linux: "{{ ansible_os_family == 'Debian' }}"
         is_debian: "{{ ansible_distribution in ['Debian', 'Ubuntu'] }}"
-        is_redhat: "{{ ansible_os_family == 'RedHat' }}"
+
+    - name: Fail on unsupported macOS
+      ansible.builtin.fail:
+        msg: >-
+          macOS bare-metal support has been deprecated and disabled.
+          Please use a Linux VM or container instead.
+          See README.md for details.
+      when: ansible_os_family == 'Darwin'
 
     - name: Display detected OS
       ansible.builtin.debug:
         msg: |
           Detected OS: {{ ansible_distribution }} {{ ansible_distribution_version }}
           OS Family: {{ ansible_os_family }}
-          macOS: {{ is_macos }}
           Linux (Debian/Ubuntu): {{ is_debian }}
-          Linux (RedHat/CentOS): {{ is_redhat }}
 
     - name: Update apt cache and upgrade all packages (Debian/Ubuntu)
       ansible.builtin.apt:
         update_cache: true
         upgrade: dist
         cache_valid_time: 3600
-      when: is_debian
+      when: is_debian and not ci_test
       register: apt_upgrade_result
 
     - name: Display apt upgrade results
@@ -70,42 +74,13 @@
       run_once: true
       changed_when: false
 
-    - name: Check if Homebrew is installed
-      ansible.builtin.stat:
-        path: "{{ '/opt/homebrew/bin/brew' if is_macos else '/home/linuxbrew/.linuxbrew/bin/brew' }}"
-      register: homebrew_check
-
-    - name: Install Homebrew (macOS and Linux)
-      ansible.builtin.shell: |
-        NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-      args:
-        creates: "{{ '/opt/homebrew/bin/brew' if is_macos else '/home/linuxbrew/.linuxbrew/bin/brew' }}"
-      when: not homebrew_check.stat.exists
-      register: homebrew_install
-      become: false
-
-    - name: Add Homebrew to PATH for current session (Linux)
-      ansible.builtin.set_fact:
-        ansible_env: "{{ ansible_env | combine({'PATH': '/home/linuxbrew/.linuxbrew/bin:' + ansible_env.PATH}) }}"
-      when: is_linux and not is_macos
-
-    - name: Add Homebrew to PATH for current session (macOS)
-      ansible.builtin.set_fact:
-        ansible_env: "{{ ansible_env | combine({'PATH': '/opt/homebrew/bin:' + ansible_env.PATH}) }}"
-      when: is_macos
-
-    - name: Display Homebrew installation status
-      ansible.builtin.debug:
-        msg: "✅ Homebrew installed successfully"
-      when: homebrew_install is defined and homebrew_install.changed
-
   roles:
     - clawdbot
 
   post_tasks:
     - name: Copy ASCII art script
-      ansible.builtin.copy:
-        src: roles/clawdbot/files/show-lobster.sh
+      ansible.builtin.template:
+        src: roles/clawdbot/templates/show-lobster.sh.j2
         dest: /tmp/show-lobster.sh
         mode: '0755'
 
@@ -115,9 +90,9 @@
 
     - name: Create one-time welcome message for clawdbot user
       ansible.builtin.copy:
-        dest: /home/clawdbot/.clawdbot-welcome
-        owner: clawdbot
-        group: clawdbot
+        dest: "{{ clawdbot_home }}/.clawdbot-welcome"
+        owner: "{{ clawdbot_user }}"
+        group: "{{ clawdbot_user }}"
         mode: '0644'
         content: |
           echo ""
@@ -132,7 +107,6 @@
           echo "Environment is configured:"
           echo "  ✓ XDG_RUNTIME_DIR: ${XDG_RUNTIME_DIR:-not set}"
           echo "  ✓ DBUS_SESSION_BUS_ADDRESS: ${DBUS_SESSION_BUS_ADDRESS:-not set}"
-          echo "  ✓ Homebrew: $(which brew 2>/dev/null || echo 'not found')"
           echo "  ✓ Clawdbot: $(clawdbot --version 2>/dev/null || echo 'not found')"
           echo ""
           echo "────────────────────────────────────────────────────────"
@@ -178,22 +152,23 @@
           echo "  • Troubleshoot:     clawdbot doctor"
           echo "  • List agents:      clawdbot agents list"
           echo ""
-          echo "────────────────────────────────────────────────────────"
+          {% if tailscale_enabled | default(false) %}echo "────────────────────────────────────────────────────────"
           echo "🌐 Connect Tailscale VPN (optional):"
           echo "────────────────────────────────────────────────────────"
           echo ""
           echo "    exit"
           echo "    sudo tailscale up"
           echo ""
-          echo "────────────────────────────────────────────────────────"
+          {% endif %}echo "────────────────────────────────────────────────────────"
           echo ""
           echo "Type 'exit' to return to your previous user"
           echo ""
-          rm -f ~/.clawdbot-welcome
+          # Remove welcome message (suppress errors if already deleted)
+          rm -f "$HOME/.clawdbot-welcome" 2>/dev/null || true
 
     - name: Add welcome message to .bashrc
       ansible.builtin.lineinfile:
-        path: /home/clawdbot/.bashrc
+        path: "{{ clawdbot_home }}/.bashrc"
         line: '[ -f ~/.clawdbot-welcome ] && source ~/.clawdbot-welcome'
         state: present
         insertafter: EOF

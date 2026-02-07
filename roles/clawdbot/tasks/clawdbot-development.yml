@@ -49,7 +49,7 @@
   become_user: "{{ clawdbot_user }}"
   environment:
     PNPM_HOME: "{{ clawdbot_home }}/.local/share/pnpm"
-    PATH: "{{ clawdbot_home }}/.local/bin:/home/linuxbrew/.linuxbrew/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
+    PATH: "{{ clawdbot_home }}/.local/bin:{{ clawdbot_home }}/.local/share/pnpm:/usr/local/bin:/usr/bin:/bin"
     HOME: "{{ clawdbot_home }}"
   register: pnpm_install_result
   changed_when: "'Already up to date' not in pnpm_install_result.stdout"
@@ -63,7 +63,7 @@
   become_user: "{{ clawdbot_user }}"
   environment:
     PNPM_HOME: "{{ clawdbot_home }}/.local/share/pnpm"
-    PATH: "{{ clawdbot_home }}/.local/bin:/home/linuxbrew/.linuxbrew/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
+    PATH: "{{ clawdbot_home }}/.local/bin:{{ clawdbot_home }}/.local/share/pnpm:/usr/local/bin:/usr/bin:/bin"
     HOME: "{{ clawdbot_home }}"
   register: pnpm_build_result
   changed_when: true  # Build always changes dist/ directory
@@ -106,12 +106,14 @@
 
 - name: Verify clawdbot installation from development build
   ansible.builtin.shell:
-    cmd: "{{ clawdbot_home }}/.local/bin/clawdbot --version"
+    cmd: clawdbot --version
     executable: /bin/bash
   become: true
   become_user: "{{ clawdbot_user }}"
   environment:
-    PATH: "{{ clawdbot_home }}/.local/bin:/usr/local/bin:/usr/bin:/bin"
+    PNPM_HOME: "{{ clawdbot_home }}/.local/share/pnpm"
+    PATH: "{{ clawdbot_home }}/.local/bin:{{ clawdbot_home }}/.local/share/pnpm:/usr/local/bin:/usr/bin:/bin"
+    HOME: "{{ clawdbot_home }}"
   register: clawdbot_dev_version
   changed_when: false
 

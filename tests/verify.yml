@@ -1,0 +1,70 @@
+---
+- name: Verify playbook results
+  hosts: localhost
+  connection: local
+  gather_facts: true
+
+  vars:
+    clawdbot_user: clawdbot
+    clawdbot_home: /home/clawdbot
+
+  tasks:
+    - name: Verify clawdbot user exists
+      ansible.builtin.command: id clawdbot
+      changed_when: false
+
+    - name: Verify critical packages installed
+      ansible.builtin.command: "dpkg -s {{ item }}"
+      loop: [git, curl, vim, jq, tmux, tree, htop]
+      changed_when: false
+
+    - name: Verify Node.js installed
+      ansible.builtin.command: node --version
+      changed_when: false
+
+    - name: Verify pnpm installed
+      ansible.builtin.command: pnpm --version
+      changed_when: false
+
+    - name: Verify clawdbot directory structure
+      ansible.builtin.stat:
+        path: "{{ item.path }}"
+      loop:
+        - { path: "{{ clawdbot_home }}/.clawdbot", mode: "0755" }
+        - { path: "{{ clawdbot_home }}/.clawdbot/sessions" }
+        - { path: "{{ clawdbot_home }}/.clawdbot/credentials", mode: "0700" }
+        - { path: "{{ clawdbot_home }}/.clawdbot/data" }
+        - { path: "{{ clawdbot_home }}/.clawdbot/logs" }
+        - { path: "{{ clawdbot_home }}/.ssh", mode: "0700" }
+      register: dir_checks
+
+    - name: Assert directories exist
+      ansible.builtin.assert:
+        that: item.stat.exists and item.stat.isdir
+        fail_msg: "Directory missing: {{ item.item.path }}"
+      loop: "{{ dir_checks.results }}"
+      loop_control:
+        label: "{{ item.item.path }}"
+
+    - name: Assert credentials dir has restricted permissions
+      ansible.builtin.assert:
+        that: dir_checks.results[2].stat.mode == '0700'
+        fail_msg: "credentials dir should be 0700"
+
+    - name: Verify sudoers file exists and is valid
+      ansible.builtin.command: visudo -cf /etc/sudoers.d/clawdbot
+      changed_when: false
+
+    - name: Verify global vim config exists
+      ansible.builtin.stat:
+        path: /etc/vim/vimrc.local
+      register: vimrc
+    - ansible.builtin.assert:
+        that: vimrc.stat.exists
+
+    - name: Verify git global config
+      ansible.builtin.command: git config --global init.defaultBranch
+      changed_when: false
+      register: git_branch
+    - ansible.builtin.assert:
+        that: git_branch.stdout == 'main'

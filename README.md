@@ -3,19 +3,29 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Lint](https://github.com/pasogott/clawdbot-ansible/actions/workflows/lint.yml/badge.svg)](https://github.com/pasogott/clawdbot-ansible/actions/workflows/lint.yml)
 [![Ansible](https://img.shields.io/badge/Ansible-2.14+-blue.svg)](https://www.ansible.com/)
-[![Multi-OS](https://img.shields.io/badge/OS-Debian%20%7C%20Ubuntu%20%7C%20macOS-orange.svg)](https://www.debian.org/)
+[![Multi-OS](https://img.shields.io/badge/OS-Debian%20%7C%20Ubuntu-orange.svg)](https://www.debian.org/)
 
-Automated, hardened installation of [Clawdbot](https://github.com/clawdbot/clawdbot) with Docker, Homebrew, and Tailscale VPN support for Linux and macOS.
+Automated, hardened installation of [Clawdbot](https://github.com/clawdbot/clawdbot) with Docker and Tailscale VPN support for Debian/Ubuntu Linux.
+
+## ⚠️ macOS Support: Deprecated & Disabled
+
+**Effective 2026-02-06, support for bare-metal macOS installations has been removed from this playbook.**
+
+### Why?
+The underlying project currently requires system-level permissions and configurations that introduce significant security risks when executed on a primary host OS. To protect user data and system integrity, we have disabled bare-metal execution.
+
+### What does this mean?
+* The playbook will now explicitly fail if run on a `Darwin` (macOS) system.
+* We strongly discourage manual workarounds to bypass this check.
+* **Future Support:** We are evaluating a virtualization-first strategy (using Vagrant or Docker) to provide a sandboxed environment for this project in the future.
 
 ## Features
 
-- 🔒 **Firewall-first**: UFW (Linux) + Application Firewall (macOS) + Docker isolation
+- 🔒 **Firewall-first**: UFW firewall + Docker isolation
 - 🛡️ **Fail2ban**: SSH brute-force protection out of the box
 - 🔄 **Auto-updates**: Automatic security patches via unattended-upgrades
 - 🔐 **Tailscale VPN**: Secure remote access without exposing services
-- 🍺 **Homebrew**: Package manager for both Linux and macOS
-- 🐳 **Docker**: Docker CE (Linux) / Docker Desktop (macOS)
-- 🌐 **Multi-OS Support**: Debian, Ubuntu, and macOS
+- 🐳 **Docker**: Docker CE with security hardening
 - 🚀 **One-command install**: Complete setup in minutes
 - 🔧 **Auto-configuration**: DBus, systemd, environment setup
 - 📦 **pnpm installation**: Uses `pnpm install -g clawdbot@latest`
@@ -152,31 +162,17 @@ ansible-playbook playbook.yml --ask-become-pass
 - Root/sudo access
 - Internet connection
 
-### macOS
-- macOS 11 (Big Sur) or later
-- Homebrew will be installed automatically
-- Admin/sudo access
-- Internet connection
-
 ## What Gets Installed
 
-### Common (All OS)
-- Homebrew package manager
 - Node.js 22.x + pnpm
 - Clawdbot via `pnpm install -g clawdbot@latest`
-- Essential development tools
-- Git, zsh, oh-my-zsh
-
-### Linux-Specific
 - Docker CE + Compose V2
-- UFW firewall (configured)
+- UFW firewall (configured for SSH + Tailscale only)
 - Tailscale VPN
-- systemd service
-
-### macOS-Specific
-- Docker Desktop (via Homebrew Cask)
-- Application Firewall
-- Tailscale app
+- systemd service for Clawdbot
+- Essential development tools (git, vim, curl, etc.)
+- Fail2ban for SSH protection
+- Unattended-upgrades for automatic security patches
 
 ## Manual Installation
 

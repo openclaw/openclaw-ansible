@@ -3,16 +3,19 @@
   ansible.builtin.include_tasks: system-tools.yml
 
 - name: Include Tailscale installation tasks
-  ansible.builtin.include_tasks: tailscale.yml
+  ansible.builtin.include_tasks: tailscale-linux.yml
+  when: tailscale_enabled | bool
 
 - name: Include user creation tasks
   ansible.builtin.include_tasks: user.yml
 
 - name: Include Docker installation tasks
-  ansible.builtin.include_tasks: docker.yml
+  ansible.builtin.include_tasks: docker-linux.yml
+  when: not ci_test
 
 - name: Include firewall configuration tasks
-  ansible.builtin.include_tasks: firewall.yml
+  ansible.builtin.include_tasks: firewall-linux.yml
+  when: not ci_test
 
 - name: Include Node.js installation tasks
   ansible.builtin.include_tasks: nodejs.yml

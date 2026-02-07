@@ -63,36 +63,42 @@ systemd → docker compose → clawdbot container
 
 ## Installation Flow
 
-1. **Tailscale Setup** (`tailscale.yml`)
+1. **System Tools Setup** (`system-tools.yml` → `system-tools-linux.yml`)
+   - Install essential packages (git, vim, curl, etc.)
+   - Configure .bashrc for clawdbot user
+
+2. **Tailscale Setup** (`tailscale-linux.yml`) - **OPTIONAL (disabled by default)**
+   - Enabled via `tailscale_enabled: true`
    - Add Tailscale repository
    - Install Tailscale package
    - Display connection instructions
 
-2. **User Creation** (`user.yml`)
+3. **User Creation** (`user.yml`)
    - Create `clawdbot` system user
+   - Configure sudo permissions
+   - Set up SSH keys
 
-3. **Docker Installation** (`docker.yml`)
+4. **Docker Installation** (`docker-linux.yml`)
    - Install Docker CE + Compose V2
    - Add user to docker group
    - Create `/etc/docker` directory
 
-4. **Firewall Setup** (`firewall.yml`)
+5. **Firewall Setup** (`firewall-linux.yml`)
    - Install UFW
    - Configure DOCKER-USER chain
    - Configure Docker daemon (`/etc/docker/daemon.json`)
-   - Allow SSH (22/tcp) and Tailscale (41641/udp)
+   - Allow SSH (22/tcp) and conditionally Tailscale (41641/udp) if enabled
+   - Install and configure fail2ban
 
-5. **Node.js Installation** (`nodejs.yml`)
+6. **Node.js Installation** (`nodejs.yml`)
    - Add NodeSource repository
    - Install Node.js 22.x
    - Install pnpm globally
 
-6. **Clawdbot Setup** (`clawdbot.yml`)
+7. **Clawdbot Setup** (`clawdbot.yml`)
    - Create directories
-   - Generate configs from templates
-   - Build Docker image
-   - Start container via Compose
-   - Install systemd service
+   - Install via pnpm (release mode) or build from source (development mode)
+   - Configure systemd service
 
 ## Key Design Decisions
 
@@ -119,12 +125,13 @@ Principle of least privilege. If container is compromised, attacker has limited 
 
 ```
 main.yml
-├── tailscale.yml (VPN setup)
+├── system-tools.yml → system-tools-linux.yml (essential packages)
+├── tailscale-linux.yml (VPN setup - optional, skipped if tailscale_enabled: false)
 ├── user.yml (create clawdbot user)
-├── docker.yml (install Docker, create /etc/docker)
-├── firewall.yml (configure UFW + Docker daemon)
+├── docker-linux.yml (install Docker, create /etc/docker)
+├── firewall-linux.yml (configure UFW + Docker daemon + fail2ban)
 ├── nodejs.yml (Node.js + pnpm)
-└── clawdbot.yml (container setup)
+└── clawdbot.yml (release or development installation)
 ```
 
 Order matters: Docker must be installed before firewall configuration because:

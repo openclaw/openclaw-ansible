@@ -4,8 +4,6 @@
 - name: Install essential system tools (Linux - apt)
   ansible.builtin.apt:
     name:
-      # Shells
-      - zsh
       # Editors
       - vim
       - nano
@@ -40,16 +38,11 @@
       - unzip
       - rsync
       - less
-      # Build essentials for Homebrew on Linux
+      # Build essentials for development
       - build-essential
       - file
     state: present
     update_cache: true
-
-- name: Set zsh as default shell for clawdbot user (Linux)
-  ansible.builtin.user:
-    name: "{{ clawdbot_user }}"
-    shell: /usr/bin/zsh
 
 - name: Deploy global vim configuration (Linux)
   ansible.builtin.template:
@@ -57,62 +50,4 @@
     dest: /etc/vim/vimrc.local
     owner: root
     group: root
-    mode: '0644'
-
-- name: Configure .bashrc for clawdbot user (Linux)
-  ansible.builtin.blockinfile:
-    path: "{{ clawdbot_home }}/.bashrc"
-    marker: "# {mark} ANSIBLE MANAGED BLOCK - Clawdbot config"
-    block: |
-      # Enable 256 colors
-      export TERM=xterm-256color
-      export COLORTERM=truecolor
-
-      # Add Homebrew to PATH (Linux)
-      eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-
-      # Add pnpm to PATH
-      export PNPM_HOME="{{ clawdbot_home }}/.local/share/pnpm"
-      export PATH="{{ clawdbot_home }}/.local/bin:$PNPM_HOME:$PATH"
-
-      # Color support for common tools
-      export CLICOLOR=1
-      export LS_COLORS='di=34:ln=35:so=32:pi=33:ex=31:bd=34;46:cd=34;43:su=30;41:sg=30;46:tw=30;42:ow=30;43'
-
-      # Aliases
-      alias ls='ls --color=auto'
-      alias grep='grep --color=auto'
-      alias ll='ls -lah'
-    create: true
-    owner: "{{ clawdbot_user }}"
-    group: "{{ clawdbot_user }}"
-    mode: '0644'
-
-- name: Configure .zshrc for clawdbot user (Linux)
-  ansible.builtin.blockinfile:
-    path: "{{ clawdbot_home }}/.zshrc"
-    marker: "# {mark} ANSIBLE MANAGED BLOCK - Clawdbot config"
-    block: |
-      # Enable 256 colors
-      export TERM=xterm-256color
-      export COLORTERM=truecolor
-
-      # Add Homebrew to PATH (Linux)
-      eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-
-      # Add pnpm to PATH
-      export PNPM_HOME="{{ clawdbot_home }}/.local/share/pnpm"
-      export PATH="{{ clawdbot_home }}/.local/bin:$PNPM_HOME:$PATH"
-
-      # Color support for common tools
-      export CLICOLOR=1
-      export LS_COLORS='di=34:ln=35:so=32:pi=33:ex=31:bd=34;46:cd=34;43:su=30;41:sg=30;46:tw=30;42:ow=30;43'
-
-      # Aliases
-      alias ls='ls --color=auto'
-      alias grep='grep --color=auto'
-      alias ll='ls -lah'
-    create: true
-    owner: "{{ clawdbot_user }}"
-    group: "{{ clawdbot_user }}"
     mode: '0644'

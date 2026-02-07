@@ -103,6 +103,7 @@
     port: '41641'
     proto: udp
     comment: 'Tailscale'
+  when: tailscale_enabled | bool
 
 - name: Get default network interface
   ansible.builtin.shell:
@@ -112,6 +113,14 @@
     executable: /bin/bash
   register: default_interface
   changed_when: false
+
+- name: Validate default network interface was detected
+  ansible.builtin.assert:
+    that:
+      - default_interface.stdout is defined
+      - default_interface.stdout | length > 0
+    fail_msg: "Failed to detect default network interface. Cannot configure firewall rules safely."
+    success_msg: "Default network interface detected: {{ default_interface.stdout }}"
 
 - name: Create UFW after.rules for Docker isolation
   ansible.builtin.blockinfile:

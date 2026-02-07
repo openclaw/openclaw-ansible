@@ -1,4 +1,11 @@
 ---
+- name: Validate clawdbot_install_mode
+  ansible.builtin.assert:
+    that:
+      - clawdbot_install_mode in ["release", "development"]
+    fail_msg: "Invalid clawdbot_install_mode: '{{ clawdbot_install_mode }}'. Must be 'release' or 'development'."
+    success_msg: "Valid install mode: {{ clawdbot_install_mode }}"
+
 - name: Create Clawdbot directories (structure only, no config files)
   ansible.builtin.file:
     path: "{{ item.path }}"
@@ -37,12 +44,24 @@
 - name: Configure pnpm for clawdbot user
   ansible.builtin.shell:
     cmd: |
-      pnpm config set global-dir {{ clawdbot_home }}/.local/share/pnpm
-      pnpm config set global-bin-dir {{ clawdbot_home }}/.local/bin
+      CURRENT_GLOBAL_DIR=$(pnpm config get global-dir 2>/dev/null || echo "")
+      CURRENT_BIN_DIR=$(pnpm config get global-bin-dir 2>/dev/null || echo "")
+      CHANGED=0
+      if [ "$CURRENT_GLOBAL_DIR" != "{{ clawdbot_home }}/.local/share/pnpm" ]; then
+        pnpm config set global-dir {{ clawdbot_home }}/.local/share/pnpm
+        CHANGED=1
+      fi
+      if [ "$CURRENT_BIN_DIR" != "{{ clawdbot_home }}/.local/bin" ]; then
+        pnpm config set global-bin-dir {{ clawdbot_home }}/.local/bin
+        CHANGED=1
+      fi
+      exit $CHANGED
     executable: /bin/bash
   become: true
   become_user: "{{ clawdbot_user }}"
-  changed_when: true  # Always consider changed as pnpm config may update
+  register: pnpm_config_result
+  changed_when: pnpm_config_result.rc == 1
+  failed_when: pnpm_config_result.rc > 1
 
 - name: Display installation mode
   ansible.builtin.debug:
@@ -51,11 +70,11 @@
 # Include appropriate installation method based on mode
 - name: Include release installation (pnpm install -g)
   ansible.builtin.include_tasks: clawdbot-release.yml
-  when: clawdbot_install_mode == "release"
+  when: clawdbot_install_mode == "release" and not ci_test
 
 - name: Include development installation (git clone + build + link)
   ansible.builtin.include_tasks: clawdbot-development.yml
-  when: clawdbot_install_mode == "development"
+  when: clawdbot_install_mode == "development" and not ci_test
 
 - name: Configure .bashrc for clawdbot user (base config)
   ansible.builtin.blockinfile:

@@ -169,31 +169,27 @@ These variables only apply when `clawdbot_install_mode: development`
 
 ### Tailscale Configuration
 
+#### `tailscale_enabled`
+- **Type**: Boolean
+- **Default**: `false`
+- **Description**: Enable Tailscale installation and configuration
+- **Example**:
+  ```bash
+  -e tailscale_enabled=true
+  ```
+- **Note**: When disabled (default), Tailscale will not be installed, no firewall rules will be added for port 41641, and no Tailscale sudoers entries will be created
+
 #### `tailscale_authkey`
 - **Type**: String
 - **Default**: `""` (empty - manual setup required)
 - **Description**: Tailscale authentication key for automatic connection
+- **Security**: Tasks using this variable must set `no_log: true`
 - **Example**:
   ```bash
   -e tailscale_authkey=tskey-auth-k1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6
   ```
 - **Get Key**: https://login.tailscale.com/admin/settings/keys
-
-### OS-Specific Settings
-
-These are automatically set based on the detected OS:
-
-#### `homebrew_prefix`
-- **Type**: String (Path)
-- **Default**: `/opt/homebrew` (macOS) or `/home/linuxbrew/.linuxbrew` (Linux)
-- **Description**: Homebrew installation prefix
-- **Read-only**: Set automatically based on OS
-
-#### `package_manager`
-- **Type**: String
-- **Default**: `brew` (macOS) or `apt` (Linux)
-- **Description**: System package manager
-- **Read-only**: Set automatically based on OS
+- **Note**: Only used when `tailscale_enabled: true`
 
 ## Configuration Examples
 
@@ -230,6 +226,7 @@ ansible-playbook playbook.yml --ask-become-pass -e @vars-dev.yml
 ```yaml
 # vars-prod.yml
 clawdbot_install_mode: release
+tailscale_enabled: true
 tailscale_authkey: "tskey-auth-k1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6"
 clawdbot_ssh_keys:
   - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGxxxxxxxx admin@mgmt-server"
@@ -286,6 +283,7 @@ clawdbot_ssh_keys:
 ```yaml
 # environments/staging.yml
 clawdbot_install_mode: release
+tailscale_enabled: true
 tailscale_authkey: "{{ lookup('env', 'TAILSCALE_AUTHKEY_STAGING') }}"
 clawdbot_ssh_keys:
   - "{{ lookup('file', '~/.ssh/id_ed25519.pub') }}"
@@ -296,6 +294,7 @@ clawdbot_ssh_keys:
 ```yaml
 # environments/prod.yml
 clawdbot_install_mode: release
+tailscale_enabled: true
 tailscale_authkey: "{{ lookup('env', 'TAILSCALE_AUTHKEY_PROD') }}"
 clawdbot_ssh_keys:
   - "ssh-ed25519 AAAAC3... ops@prod-mgmt"

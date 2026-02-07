@@ -1,13 +1,60 @@
 ---
 - name: Create clawdbot system user
   ansible.builtin.user:
-    name: clawdbot
+    name: "{{ clawdbot_user }}"
     comment: "Clawdbot Service User"
     system: true
     shell: /bin/bash
     create_home: true
-    home: /home/clawdbot
+    home: "{{ clawdbot_home }}"
     state: present
+
+- name: Ensure clawdbot home directory has correct ownership
+  ansible.builtin.file:
+    path: "{{ clawdbot_home }}"
+    owner: "{{ clawdbot_user }}"
+    group: "{{ clawdbot_user }}"
+    state: directory
+    mode: '0755'
+
+- name: Configure .bashrc for clawdbot user
+  ansible.builtin.blockinfile:
+    path: "{{ clawdbot_home }}/.bashrc"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK - Clawdbot config"
+    block: |
+      # Enable 256 colors
+      export TERM=xterm-256color
+      export COLORTERM=truecolor
+
+      # Add pnpm to PATH
+      export PNPM_HOME="{{ clawdbot_home }}/.local/share/pnpm"
+      export PATH="{{ clawdbot_home }}/.local/bin:$PNPM_HOME:$PATH"
+
+      # Color support for common tools
+      export CLICOLOR=1
+      export LS_COLORS='di=34:ln=35:so=32:pi=33:ex=31:bd=34;46:cd=34;43:su=30;41:sg=30;46:tw=30;42:ow=30;43'
+
+      # Aliases
+      alias ls='ls --color=auto'
+      alias grep='grep --color=auto'
+      alias ll='ls -lah'
+    create: true
+    owner: "{{ clawdbot_user }}"
+    group: "{{ clawdbot_user }}"
+    mode: '0644'
+
+- name: Create .bash_profile to source .bashrc for login shells
+  ansible.builtin.copy:
+    dest: "{{ clawdbot_home }}/.bash_profile"
+    owner: "{{ clawdbot_user }}"
+    group: "{{ clawdbot_user }}"
+    mode: '0644'
+    content: |
+      # .bash_profile - Executed for login shells
+      # Source .bashrc to ensure environment is loaded for login shells
+      if [ -f ~/.bashrc ]; then
+          . ~/.bashrc
+      fi
 
 - name: Add clawdbot user to sudoers with scoped NOPASSWD
   ansible.builtin.copy:
@@ -21,92 +68,99 @@
       # SECURITY NOTE: These permissions are intentionally limited.
       # If clawdbot is compromised, attackers can only:
       # - Manage the clawdbot service
-      # - Run basic tailscale diagnostics
-      # - View clawdbot logs
-      #
+      {% if tailscale_enabled | default(false) %}# - Run basic tailscale diagnostics
+      {% endif %}# - View clawdbot logs
+      {% if tailscale_enabled | default(false) %}#
       # To grant full tailscale control (e.g., for self-healing VPN):
       #   clawdbot ALL=(ALL) NOPASSWD: /usr/bin/tailscale *
-      #
+      {% endif %}#
       # To grant full sudo (NOT RECOMMENDED):
       #   clawdbot ALL=(ALL) NOPASSWD: ALL
 
       # Service control - clawdbot service only
-      clawdbot ALL=(ALL) NOPASSWD: /usr/bin/systemctl start clawdbot
-      clawdbot ALL=(ALL) NOPASSWD: /usr/bin/systemctl stop clawdbot
-      clawdbot ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart clawdbot
-      clawdbot ALL=(ALL) NOPASSWD: /usr/bin/systemctl status clawdbot
-      clawdbot ALL=(ALL) NOPASSWD: /usr/bin/systemctl enable clawdbot
-      clawdbot ALL=(ALL) NOPASSWD: /usr/bin/systemctl disable clawdbot
+      {{ clawdbot_user }} ALL=(ALL) NOPASSWD: /usr/bin/systemctl start clawdbot
+      {{ clawdbot_user }} ALL=(ALL) NOPASSWD: /usr/bin/systemctl stop clawdbot
+      {{ clawdbot_user }} ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart clawdbot
+      {{ clawdbot_user }} ALL=(ALL) NOPASSWD: /usr/bin/systemctl status clawdbot
+      {{ clawdbot_user }} ALL=(ALL) NOPASSWD: /usr/bin/systemctl enable clawdbot
+      {{ clawdbot_user }} ALL=(ALL) NOPASSWD: /usr/bin/systemctl disable clawdbot
       # daemon-reload affects all units (required after service file changes)
-      clawdbot ALL=(ALL) NOPASSWD: /usr/bin/systemctl daemon-reload
+      {{ clawdbot_user }} ALL=(ALL) NOPASSWD: /usr/bin/systemctl daemon-reload
+      {% if tailscale_enabled | default(false) %}
 
       # Tailscale - diagnostics + connect/disconnect
       # NOTE: 'up' allows flags like --advertise-exit-node. For tighter control,
       # remove 'up' and 'down' lines - operator must then manage VPN manually.
-      clawdbot ALL=(ALL) NOPASSWD: /usr/bin/tailscale status
-      clawdbot ALL=(ALL) NOPASSWD: /usr/bin/tailscale up *
-      clawdbot ALL=(ALL) NOPASSWD: /usr/bin/tailscale down
-      clawdbot ALL=(ALL) NOPASSWD: /usr/bin/tailscale ip *
-      clawdbot ALL=(ALL) NOPASSWD: /usr/bin/tailscale version
-      clawdbot ALL=(ALL) NOPASSWD: /usr/bin/tailscale ping *
-      clawdbot ALL=(ALL) NOPASSWD: /usr/bin/tailscale whois *
+      {{ clawdbot_user }} ALL=(ALL) NOPASSWD: /usr/bin/tailscale status
+      {{ clawdbot_user }} ALL=(ALL) NOPASSWD: /usr/bin/tailscale up *
+      {{ clawdbot_user }} ALL=(ALL) NOPASSWD: /usr/bin/tailscale down
+      {{ clawdbot_user }} ALL=(ALL) NOPASSWD: /usr/bin/tailscale ip *
+      {{ clawdbot_user }} ALL=(ALL) NOPASSWD: /usr/bin/tailscale version
+      {{ clawdbot_user }} ALL=(ALL) NOPASSWD: /usr/bin/tailscale ping *
+      {{ clawdbot_user }} ALL=(ALL) NOPASSWD: /usr/bin/tailscale whois *
+      {% endif %}
 
       # Journal access - clawdbot logs only
-      clawdbot ALL=(ALL) NOPASSWD: /usr/bin/journalctl -u clawdbot *
+      {{ clawdbot_user }} ALL=(ALL) NOPASSWD: /usr/bin/journalctl -u clawdbot *
     validate: /usr/sbin/visudo -cf %s
-
-- name: Set clawdbot user as primary user for installation
-  ansible.builtin.set_fact:
-    clawdbot_user: clawdbot
-    clawdbot_home: /home/clawdbot
 
 # Fix DBus issues for systemd user services
 - name: Get clawdbot user ID
-  ansible.builtin.command: id -u clawdbot
+  ansible.builtin.command: id -u {{ clawdbot_user }}
   register: clawdbot_uid
   changed_when: false
-  when: ansible_os_family == 'Debian'
+  when: ansible_os_family == 'Debian' and not ci_test
 
 - name: Display clawdbot user ID
   ansible.builtin.debug:
     msg: "Clawdbot user ID: {{ clawdbot_uid.stdout }}"
-  when: ansible_os_family == 'Debian'
+  when: ansible_os_family == 'Debian' and not ci_test
 
 - name: Enable lingering for clawdbot user (allows systemd user services without login)
-  ansible.builtin.command: loginctl enable-linger clawdbot
+  ansible.builtin.command: loginctl enable-linger {{ clawdbot_user }}
   changed_when: false
-  when: ansible_os_family == 'Debian'
+  when: ansible_os_family == 'Debian' and not ci_test
 
 - name: Create runtime directory for clawdbot user
   ansible.builtin.file:
     path: "/run/user/{{ clawdbot_uid.stdout }}"
     state: directory
-    owner: clawdbot
-    group: clawdbot
+    owner: "{{ clawdbot_user }}"
+    group: "{{ clawdbot_user }}"
     mode: '0700'
-  when: ansible_os_family == 'Debian'
+  when: ansible_os_family == 'Debian' and not ci_test
 
 - name: Store clawdbot UID as fact for later use
   ansible.builtin.set_fact:
     clawdbot_uid_value: "{{ clawdbot_uid.stdout }}"
-  when: ansible_os_family == 'Debian'
+  when: ansible_os_family == 'Debian' and not ci_test
+
+- name: Verify clawdbot UID was successfully retrieved
+  ansible.builtin.assert:
+    that:
+      - clawdbot_uid_value is defined
+      - clawdbot_uid_value | length > 0
+    fail_msg: "Failed to retrieve clawdbot user UID. Cannot continue with systemd service setup."
+    success_msg: "Clawdbot UID verified: {{ clawdbot_uid_value }}"
+  when: ansible_os_family == 'Debian' and not ci_test
 
 # SSH key configuration
 - name: Create .ssh directory for clawdbot user
   ansible.builtin.file:
     path: "{{ clawdbot_home }}/.ssh"
     state: directory
-    owner: clawdbot
-    group: clawdbot
+    owner: "{{ clawdbot_user }}"
+    group: "{{ clawdbot_user }}"
     mode: '0700'
 
 - name: Add SSH authorized keys for clawdbot user
   ansible.builtin.authorized_key:
-    user: clawdbot
+    user: "{{ clawdbot_user }}"
     state: present
     key: "{{ item }}"
   loop: "{{ clawdbot_ssh_keys }}"
   when: clawdbot_ssh_keys | length > 0
+  no_log: true
 
 - name: Display SSH key configuration status
   ansible.builtin.debug:
@@ -120,18 +174,18 @@
 
 - name: Set XDG_RUNTIME_DIR in .bashrc for clawdbot user
   ansible.builtin.lineinfile:
-    path: /home/clawdbot/.bashrc
+    path: "{{ clawdbot_home }}/.bashrc"
     line: 'export XDG_RUNTIME_DIR=/run/user/$(id -u)'
     state: present
     create: true
-    owner: clawdbot
-    group: clawdbot
+    owner: "{{ clawdbot_user }}"
+    group: "{{ clawdbot_user }}"
     mode: '0644'
   when: ansible_os_family == 'Debian'
 
 - name: Set DBUS_SESSION_BUS_ADDRESS in .bashrc for clawdbot user
   ansible.builtin.blockinfile:
-    path: /home/clawdbot/.bashrc
+    path: "{{ clawdbot_home }}/.bashrc"
     marker: "# {mark} ANSIBLE MANAGED BLOCK - DBus config"
     block: |
       # DBus session bus configuration
@@ -141,7 +195,7 @@
         fi
       fi
     create: true
-    owner: clawdbot
-    group: clawdbot
+    owner: "{{ clawdbot_user }}"
+    group: "{{ clawdbot_user }}"
     mode: '0644'
   when: ansible_os_family == 'Debian'

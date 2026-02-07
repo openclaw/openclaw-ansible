@@ -42,10 +42,15 @@
     name: nodejs
     state: present
 
+- name: Check if pnpm is already installed
+  ansible.builtin.command: pnpm --version
+  register: pnpm_check
+  failed_when: false
+  changed_when: false
+
 - name: Install pnpm globally
   ansible.builtin.command: npm install -g pnpm
-  args:
-    creates: /usr/local/bin/pnpm
+  when: pnpm_check.rc != 0
 
 - name: Verify Node.js installation
   ansible.builtin.command: node --version

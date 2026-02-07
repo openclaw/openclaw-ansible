@@ -2,3 +2,14 @@
 *.log
 .ansible/
 .vault_pass
+
+# Secrets and credentials
+*.env
+.env*
+secrets.yml
+vault.yml
+*.pem
+*.key
+id_rsa*
+host_vars/
+group_vars/

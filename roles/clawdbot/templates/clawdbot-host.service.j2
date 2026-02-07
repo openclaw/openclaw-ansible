@@ -10,16 +10,16 @@ Group={{ clawdbot_user }}
 WorkingDirectory={{ clawdbot_home }}
 
 # Environment variables
-Environment="PATH={{ clawdbot_home }}/.local/bin:/home/linuxbrew/.linuxbrew/bin:/usr/local/bin:/usr/bin:/bin"
 Environment="PNPM_HOME={{ clawdbot_home }}/.local/share/pnpm"
+Environment="PATH={{ clawdbot_home }}/.local/bin:{{ clawdbot_home }}/.local/share/pnpm:/usr/local/bin:/usr/bin:/bin"
 Environment="HOME={{ clawdbot_home }}"
-Environment="XDG_RUNTIME_DIR=/run/user/{{ clawdbot_uid_value | default('1000') }}"
+Environment="XDG_RUNTIME_DIR=/run/user/{{ clawdbot_uid_value }}"
 
 # DBus session bus
-Environment="DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/{{ clawdbot_uid_value | default('1000') }}/bus"
+Environment="DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/{{ clawdbot_uid_value }}/bus"
 
 # Start command
-ExecStart={{ clawdbot_home }}/.local/bin/clawdbot gateway
+ExecStart=clawdbot gateway
 
 # Restart policy
 Restart=always

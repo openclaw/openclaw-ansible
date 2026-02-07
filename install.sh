@@ -12,7 +12,7 @@ if [ -z "$COLORTERM" ]; then
     export COLORTERM=truecolor
 fi
 
-REPO_URL="https://raw.githubusercontent.com/pasogott/clawdbot-ansible/main"
+REPO_URL="https://raw.githubusercontent.com/openclaw/openclaw-ansible/main"
 PLAYBOOK_URL="${REPO_URL}/playbook.yml"
 TEMP_DIR=$(mktemp -d)
 
@@ -31,15 +31,11 @@ echo -e "${GREEN}╚════════════════════
 echo ""
 
 # Detect operating system
-if [[ "$OSTYPE" == "darwin"* ]]; then
-    OS_TYPE="macos"
-    echo -e "${GREEN}Detected: macOS${NC}"
-elif command -v apt-get &> /dev/null; then
-    OS_TYPE="linux"
-    echo -e "${GREEN}Detected: Debian/Ubuntu Linux${NC}"
+if command -v apt-get &> /dev/null; then
+    echo -e "${GREEN}✓ Detected: Debian/Ubuntu Linux${NC}"
 else
-    echo -e "${RED}Error: Unsupported operating system.${NC}"
-    echo -e "${RED}This installer supports: Debian/Ubuntu and macOS${NC}"
+    echo -e "${RED}✗ Error: Unsupported operating system${NC}"
+    echo -e "${RED}  This installer supports: Debian/Ubuntu Linux only${NC}"
     exit 1
 fi
 
@@ -74,10 +70,10 @@ echo -e "${GREEN}[2/5] Downloading playbook...${NC}"
 # Download the playbook and role files
 cd "$TEMP_DIR"
 
-# For simplicity, we'll clone the entire repo
+# Clone the repository
 echo "Cloning repository..."
-git clone https://github.com/pasogott/clawdbot-ansible.git
-cd clawdbot-ansible
+git clone https://github.com/openclaw/openclaw-ansible.git
+cd openclaw-ansible
 
 echo -e "${GREEN}✓ Playbook downloaded${NC}"
 

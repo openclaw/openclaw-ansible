@@ -165,9 +165,9 @@ Container → NAT → Internet (outbound allowed)
 ## Known Limitations
 
 ### macOS Support
-- macOS firewall configuration is basic (Application Firewall only)
-- No fail2ban equivalent on macOS
-- Consider using Little Snitch or similar for enhanced macOS security
+- macOS bare-metal support has been removed as of 2026-02-06
+- The playbook now explicitly fails on Darwin systems
+- For macOS users, consider using a Linux VM or container environment
 
 ### IPv6
 - Docker IPv6 is disabled by default (`ip6tables: false` in daemon.json)

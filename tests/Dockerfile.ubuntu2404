@@ -1,0 +1,29 @@
+FROM ubuntu:24.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install Ansible and dependencies
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+      ansible \
+      python3 \
+      python3-apt \
+      sudo \
+      systemd \
+      git \
+      curl \
+      ca-certificates \
+      acl \
+      gpg \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy project into container
+COPY . /opt/ansible
+WORKDIR /opt/ansible
+
+# Install Ansible Galaxy collections
+RUN ansible-galaxy collection install -r requirements.yml
+
+# Default: run the test entrypoint
+ENTRYPOINT ["bash", "tests/entrypoint.sh"]

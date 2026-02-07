@@ -32,7 +32,6 @@ if [ $PLAYBOOK_EXIT -eq 0 ]; then
     echo "  • Configure Clawdbot (~/.clawdbot/config.yml)"
     echo "  • Login to messaging provider (WhatsApp/Telegram/Signal)"
     echo "  • Test the gateway"
-    echo "  • Connect Tailscale VPN"
     echo ""
     echo "═══════════════════════════════════════════════════════════"
     echo ""
