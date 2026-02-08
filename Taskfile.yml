@@ -6,6 +6,11 @@ vars:
   inventory: inventory.ini
   extra_args: ""
 
+includes:
+  github:
+    taskfile: ./tasks/Taskfile.github.yml
+    optional: true
+
 tasks:
   install-galaxy:
     desc: Install Ansible Galaxy collections from requirements.yml
