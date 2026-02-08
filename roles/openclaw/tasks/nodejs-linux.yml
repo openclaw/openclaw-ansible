@@ -1,0 +1,66 @@
+---
+# Linux-specific Node.js installation (NodeSource)
+
+- name: Install required packages for Node.js
+  ansible.builtin.apt:
+    name:
+      - ca-certificates
+      - curl
+      - gnupg
+    state: present
+
+- name: Create directory for NodeSource GPG key
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: '0755'
+
+- name: Add NodeSource GPG key
+  ansible.builtin.shell:
+    cmd: |
+      set -o pipefail
+      curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | \
+        gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
+      chmod a+r /etc/apt/keyrings/nodesource.gpg
+    creates: /etc/apt/keyrings/nodesource.gpg
+    executable: /bin/bash
+
+- name: Add NodeSource repository
+  ansible.builtin.shell:
+    cmd: |
+      set -o pipefail
+      echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] \
+        https://deb.nodesource.com/node_{{ nodejs_version }} nodistro main" | \
+        tee /etc/apt/sources.list.d/nodesource.list > /dev/null
+    creates: /etc/apt/sources.list.d/nodesource.list
+    executable: /bin/bash
+
+- name: Update apt cache after adding NodeSource repo
+  ansible.builtin.apt:
+    update_cache: true
+
+- name: Install Node.js
+  ansible.builtin.apt:
+    name: nodejs
+    state: present
+
+- name: Install pnpm globally
+  ansible.builtin.command: npm install -g pnpm
+  args:
+    creates: /usr/local/bin/pnpm
+
+- name: Verify Node.js installation
+  ansible.builtin.command: node --version
+  register: node_version
+  changed_when: false
+
+- name: Verify pnpm installation
+  ansible.builtin.command: pnpm --version
+  register: pnpm_version
+  changed_when: false
+
+- name: Display Node.js and pnpm versions
+  ansible.builtin.debug:
+    msg:
+      - "Node.js version: {{ node_version.stdout }}"
+      - "pnpm version: {{ pnpm_version.stdout }}"

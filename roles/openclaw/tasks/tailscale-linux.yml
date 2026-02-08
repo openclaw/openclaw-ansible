@@ -5,8 +5,8 @@
   ansible.builtin.shell:
     cmd: |
       set -o pipefail
-      DIST="ubuntu"
-      RELEASE="{{ ubuntu_codename }}"
+      DIST="{{ 'debian' if ansible_distribution == 'Debian' else 'ubuntu' }}"
+      RELEASE="{{ ubuntu_codename if ansible_distribution == 'Linux Mint' else ansible_distribution_release }}"
       curl -fsSL "https://pkgs.tailscale.com/stable/${DIST}/${RELEASE}.noarmor.gpg" | \
         tee /usr/share/keyrings/tailscale-archive-keyring.gpg > /dev/null
     creates: /usr/share/keyrings/tailscale-archive-keyring.gpg
@@ -16,8 +16,8 @@
   ansible.builtin.shell:
     cmd: |
       set -o pipefail
-      DIST="ubuntu"
-      RELEASE="{{ ubuntu_codename }}"
+      DIST="{{ 'debian' if ansible_distribution == 'Debian' else 'ubuntu' }}"
+      RELEASE="{{ ubuntu_codename if ansible_distribution == 'Linux Mint' else ansible_distribution_release }}"
       curl -fsSL "https://pkgs.tailscale.com/stable/${DIST}/${RELEASE}.tailscale-keyring.list" | \
         tee /etc/apt/sources.list.d/tailscale.list > /dev/null
     creates: /etc/apt/sources.list.d/tailscale.list

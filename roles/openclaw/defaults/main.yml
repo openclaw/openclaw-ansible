@@ -15,7 +15,7 @@ openclaw_config_dir: "{{ openclaw_home }}/.openclaw"
 
 # User settings (will be created as system user)
 openclaw_user: openclaw
-openclaw_home: /home/openclaw
+openclaw_home: "{{ '/Users/openclaw' if ansible_os_family == 'Darwin' else '/home/openclaw' }}"
 
 # OS-specific settings (set dynamically in tasks)
 homebrew_prefix: "{{ '/opt/homebrew' if ansible_os_family == 'Darwin' else '/home/linuxbrew/.linuxbrew' }}"

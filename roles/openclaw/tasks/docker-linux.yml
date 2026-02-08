@@ -17,6 +17,11 @@
     state: directory
     mode: '0755'
 
+- name: Set Docker repository distro and codename
+  ansible.builtin.set_fact:
+    docker_repo_dist: "{{ 'debian' if ansible_distribution == 'Debian' else 'ubuntu' }}"
+    docker_repo_codename: "{{ ubuntu_codename if ansible_distribution == 'Linux Mint' else ansible_distribution_release }}"
+
 - name: Add Docker GPG key
   ansible.builtin.shell:
     cmd: |
@@ -33,8 +38,8 @@
       set -o pipefail
       echo "deb [arch=$(dpkg --print-architecture) \
         signed-by=/etc/apt/keyrings/docker.gpg] \
-        https://download.docker.com/linux/ubuntu \
-        {{ ubuntu_codename }} stable" | \
+        https://download.docker.com/linux/{{ docker_repo_dist }} \
+        {{ docker_repo_codename }} stable" | \
         tee /etc/apt/sources.list.d/docker.list > /dev/null
     creates: /etc/apt/sources.list.d/docker.list
     executable: /bin/bash

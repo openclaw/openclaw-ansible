@@ -1,0 +1,29 @@
+---
+# macOS-specific Node.js installation (Homebrew)
+
+- name: Install Node.js and pnpm (macOS)
+  community.general.homebrew:
+    name:
+      - node
+      - pnpm
+    state: present
+  environment:
+    PATH: "/opt/homebrew/bin:{{ ansible_env.PATH }}"
+
+- name: Verify Node.js installation (macOS)
+  ansible.builtin.command: /opt/homebrew/bin/node --version
+  register: node_version
+  changed_when: false
+  failed_when: false
+
+- name: Verify pnpm installation (macOS)
+  ansible.builtin.command: /opt/homebrew/bin/pnpm --version
+  register: pnpm_version
+  changed_when: false
+  failed_when: false
+
+- name: Display Node.js and pnpm versions (macOS)
+  ansible.builtin.debug:
+    msg:
+      - "Node.js version: {{ node_version.stdout | default('not found') }}"
+      - "pnpm version: {{ pnpm_version.stdout | default('not found') }}"

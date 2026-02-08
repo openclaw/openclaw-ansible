@@ -42,6 +42,9 @@
     executable: /bin/bash
   become: true
   become_user: "{{ openclaw_user }}"
+  environment:
+    PATH: "{{ openclaw_home }}/.local/bin:{{ homebrew_prefix }}/bin:/usr/local/bin:/usr/bin:/bin"
+    PNPM_HOME: "{{ openclaw_home }}/.local/share/pnpm"
   changed_when: true  # Always consider changed as pnpm config may update
 
 - name: Display installation mode

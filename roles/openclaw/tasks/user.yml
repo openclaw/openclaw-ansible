@@ -1,12 +1,12 @@
 ---
 - name: Create openclaw system user
   ansible.builtin.user:
-    name: openclaw
+    name: "{{ openclaw_user }}"
     comment: "OpenClaw Service User"
-    system: true
-    shell: /bin/bash
+    system: "{{ ansible_os_family != 'Darwin' }}"
+    shell: "{{ '/bin/zsh' if ansible_os_family == 'Darwin' else '/bin/bash' }}"
     create_home: true
-    home: /home/openclaw
+    home: "{{ openclaw_home }}"
     state: present
 
 - name: Add openclaw user to sudoers with NOPASSWD
@@ -22,8 +22,8 @@
 
 - name: Set openclaw user as primary user for installation
   ansible.builtin.set_fact:
-    openclaw_user: openclaw
-    openclaw_home: /home/openclaw
+    openclaw_user: "{{ openclaw_user }}"
+    openclaw_home: "{{ openclaw_home }}"
 
 # Fix DBus issues for systemd user services
 - name: Get openclaw user ID
@@ -61,13 +61,13 @@
   ansible.builtin.file:
     path: "{{ openclaw_home }}/.ssh"
     state: directory
-    owner: openclaw
-    group: openclaw
+    owner: "{{ openclaw_user }}"
+    group: "{{ openclaw_user }}"
     mode: '0700'
 
 - name: Add SSH authorized keys for openclaw user
   ansible.builtin.authorized_key:
-    user: openclaw
+    user: "{{ openclaw_user }}"
     state: present
     key: "{{ item }}"
   loop: "{{ openclaw_ssh_keys }}"
@@ -85,18 +85,18 @@
 
 - name: Set XDG_RUNTIME_DIR in .bashrc for openclaw user
   ansible.builtin.lineinfile:
-    path: /home/openclaw/.bashrc
+    path: "{{ openclaw_home }}/.bashrc"
     line: 'export XDG_RUNTIME_DIR=/run/user/$(id -u)'
     state: present
     create: true
-    owner: openclaw
-    group: openclaw
+    owner: "{{ openclaw_user }}"
+    group: "{{ openclaw_user }}"
     mode: '0644'
   when: ansible_os_family == 'Debian'
 
 - name: Set DBUS_SESSION_BUS_ADDRESS in .bashrc for openclaw user
   ansible.builtin.blockinfile:
-    path: /home/openclaw/.bashrc
+    path: "{{ openclaw_home }}/.bashrc"
     marker: "# {mark} ANSIBLE MANAGED BLOCK - DBus config"
     block: |
       # DBus session bus configuration
@@ -106,7 +106,7 @@
         fi
       fi
     create: true
-    owner: openclaw
-    group: openclaw
+    owner: "{{ openclaw_user }}"
+    group: "{{ openclaw_user }}"
     mode: '0644'
   when: ansible_os_family == 'Debian'

@@ -71,6 +71,17 @@
         state: present
       when: is_linux and not is_macos
 
+    - name: Install Homebrew prerequisites (Linux)
+      ansible.builtin.apt:
+        name:
+          - build-essential
+          - curl
+          - file
+          - git
+        state: present
+        update_cache: true
+      when: is_linux and not is_macos
+
     - name: Check if running as root
       ansible.builtin.command: id -u
       register: user_id
@@ -136,9 +147,9 @@
 
     - name: Create one-time welcome message for openclaw user
       ansible.builtin.copy:
-        dest: /home/openclaw/.openclaw-welcome
-        owner: openclaw
-        group: openclaw
+        dest: "{{ openclaw_home }}/.openclaw-welcome"
+        owner: "{{ openclaw_user }}"
+        group: "{{ openclaw_user }}"
         mode: '0644'
         content: |
           echo ""
@@ -214,10 +225,18 @@
 
     - name: Add welcome message to .bashrc
       ansible.builtin.lineinfile:
-        path: /home/openclaw/.bashrc
+        path: "{{ openclaw_home }}/.bashrc"
         line: '[ -f ~/.openclaw-welcome ] && source ~/.openclaw-welcome'
         state: present
         insertafter: EOF
+
+    - name: Add welcome message to .zshrc (macOS)
+      ansible.builtin.lineinfile:
+        path: "{{ openclaw_home }}/.zshrc"
+        line: '[ -f ~/.openclaw-welcome ] && source ~/.openclaw-welcome'
+        state: present
+        insertafter: EOF
+      when: ansible_os_family == 'Darwin'
 
     - name: Notify that playbook is complete
       ansible.builtin.debug:
