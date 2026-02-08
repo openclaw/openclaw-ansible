@@ -1,5 +1,5 @@
 ---
-- name: Install Clawdbot with Docker and UFW firewall
+- name: Install OpenClaw with Docker and UFW firewall
   hosts: localhost
   connection: local
   become: true
@@ -14,25 +14,43 @@
   pre_tasks:
     - name: Enable color terminal for current session
       ansible.builtin.set_fact:
-        ansible_env:
-          TERM: xterm-256color
-          COLORTERM: truecolor
+        ansible_env: "{{ ansible_env | combine({'TERM': 'xterm-256color', 'COLORTERM': 'truecolor'}) }}"
 
     - name: Detect operating system
       ansible.builtin.set_fact:
         is_macos: "{{ ansible_os_family == 'Darwin' }}"
         is_linux: "{{ ansible_os_family == 'Debian' }}"
-        is_debian: "{{ ansible_distribution in ['Debian', 'Ubuntu'] }}"
+        is_debian: "{{ ansible_distribution in ['Debian', 'Ubuntu', 'Linux Mint'] }}"
         is_redhat: "{{ ansible_os_family == 'RedHat' }}"
+        is_linux_mint: "{{ ansible_distribution == 'Linux Mint' }}"
+
+    - name: Read /etc/os-release for Linux Mint Ubuntu codename
+      ansible.builtin.slurp:
+        src: /etc/os-release
+      register: os_release_content
+      when: is_linux_mint
+
+    - name: Extract Ubuntu codename from /etc/os-release for Linux Mint
+      ansible.builtin.set_fact:
+        ubuntu_codename: "{{ (os_release_content['content'] | b64decode | regex_search('UBUNTU_CODENAME=(.+)', '\\1') | first) | default(ansible_distribution_release) }}"
+      when: is_linux_mint
+
+    - name: Set Ubuntu codename for non-Mint systems
+      ansible.builtin.set_fact:
+        ubuntu_codename: "{{ ansible_distribution_release }}"
+      when: not is_linux_mint and is_debian
 
     - name: Display detected OS
       ansible.builtin.debug:
         msg: |
           Detected OS: {{ ansible_distribution }} {{ ansible_distribution_version }}
+          Detected OS Release: {{ ansible_facts.os_release | default('N/A') }}
           OS Family: {{ ansible_os_family }}
           macOS: {{ is_macos }}
           Linux (Debian/Ubuntu): {{ is_debian }}
           Linux (RedHat/CentOS): {{ is_redhat }}
+          Linux Mint: {{ is_linux_mint }}
+          Ubuntu Codename: {{ ubuntu_codename | default('N/A') }}
 
     - name: Update apt cache and upgrade all packages (Debian/Ubuntu)
       ansible.builtin.apt:
@@ -46,6 +64,12 @@
       ansible.builtin.debug:
         msg: "✅ System packages updated and upgraded"
       when: is_debian and apt_upgrade_result.changed
+
+    - name: Install ACL for privilege escalation
+      ansible.builtin.package:
+        name: acl
+        state: present
+      when: is_linux and not is_macos
 
     - name: Check if running as root
       ansible.builtin.command: id -u
@@ -72,6 +96,7 @@
       register: homebrew_check
 
     - name: Install Homebrew (macOS and Linux)
+      become: false
       ansible.builtin.shell: |
         NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
       args:
@@ -80,6 +105,7 @@
       register: homebrew_install
 
     - name: Add Homebrew to PATH for current session (Linux)
+      become: false
       ansible.builtin.set_fact:
         ansible_env: "{{ ansible_env | combine({'PATH': '/home/linuxbrew/.linuxbrew/bin:' + ansible_env.PATH}) }}"
       when: is_linux and not is_macos
@@ -95,12 +121,12 @@
       when: homebrew_install is defined and homebrew_install.changed
 
   roles:
-    - clawdbot
+    - openclaw
 
   post_tasks:
     - name: Copy ASCII art script
       ansible.builtin.copy:
-        src: roles/clawdbot/files/show-lobster.sh
+        src: roles/openclaw/files/show-lobster.sh
         dest: /tmp/show-lobster.sh
         mode: '0755'
 
@@ -108,16 +134,16 @@
       ansible.builtin.command: /tmp/show-lobster.sh
       changed_when: false
 
-    - name: Create one-time welcome message for clawdbot user
+    - name: Create one-time welcome message for openclaw user
       ansible.builtin.copy:
-        dest: /home/clawdbot/.clawdbot-welcome
-        owner: clawdbot
-        group: clawdbot
+        dest: /home/openclaw/.openclaw-welcome
+        owner: openclaw
+        group: openclaw
         mode: '0644'
         content: |
           echo ""
           echo "╔════════════════════════════════════════════════════════╗"
-          echo "║        📋 Clawdbot Setup - Next Steps                 ║"
+          echo "║        📋 OpenClaw Setup - Next Steps                 ║"
           echo "╚════════════════════════════════════════════════════════╝"
           echo ""
           echo "You are: $(whoami)@$(hostname)"
@@ -128,13 +154,13 @@
           echo "  ✓ XDG_RUNTIME_DIR: ${XDG_RUNTIME_DIR:-not set}"
           echo "  ✓ DBUS_SESSION_BUS_ADDRESS: ${DBUS_SESSION_BUS_ADDRESS:-not set}"
           echo "  ✓ Homebrew: $(which brew 2>/dev/null || echo 'not found')"
-          echo "  ✓ Clawdbot: $(clawdbot --version 2>/dev/null || echo 'not found')"
+          echo "  ✓ OpenClaw: $(openclaw --version 2>/dev/null || echo 'not found')"
           echo ""
           echo "────────────────────────────────────────────────────────"
           echo "🚀 Quick Start - Run This Command:"
           echo "────────────────────────────────────────────────────────"
           echo ""
-          echo "    clawdbot onboard --install-daemon"
+          echo "    openclaw onboard --install-daemon"
           echo ""
           echo "This will:"
           echo "  • Guide you through the setup wizard"
@@ -146,32 +172,32 @@
           echo "────────────────────────────────────────────────────────"
           echo ""
           echo "1️⃣  Interactive onboarding (recommended):"
-          echo "    clawdbot onboard --install-daemon"
+          echo "    openclaw onboard --install-daemon"
           echo ""
           echo "2️⃣  Manual configuration:"
-          echo "    clawdbot configure"
-          echo "    nano ~/.clawdbot/clawdbot.json"
+          echo "    openclaw configure"
+          echo "    nano ~/.openclaw/openclaw.json"
           echo ""
           echo "3️⃣  Login to messaging provider:"
-          echo "    clawdbot providers login"
+          echo "    openclaw providers login"
           echo ""
           echo "4️⃣  Test the gateway:"
-          echo "    clawdbot gateway"
+          echo "    openclaw gateway"
           echo ""
           echo "5️⃣  Install as daemon (if not using onboard):"
-          echo "    clawdbot daemon install"
-          echo "    clawdbot daemon start"
+          echo "    openclaw daemon install"
+          echo "    openclaw daemon start"
           echo ""
           echo "────────────────────────────────────────────────────────"
           echo "🔧 Useful Commands:"
           echo "────────────────────────────────────────────────────────"
           echo ""
-          echo "  • View logs:        clawdbot logs"
-          echo "  • Check status:     clawdbot status"
-          echo "  • Stop daemon:      clawdbot daemon stop"
-          echo "  • Restart daemon:   clawdbot daemon restart"
-          echo "  • Troubleshoot:     clawdbot doctor"
-          echo "  • List agents:      clawdbot agents list"
+          echo "  • View logs:        openclaw logs"
+          echo "  • Check status:     openclaw status"
+          echo "  • Stop daemon:      openclaw daemon stop"
+          echo "  • Restart daemon:   openclaw daemon restart"
+          echo "  • Troubleshoot:     openclaw doctor"
+          echo "  • List agents:      openclaw agents list"
           echo ""
           echo "────────────────────────────────────────────────────────"
           echo "🌐 Connect Tailscale VPN (optional):"
@@ -184,15 +210,15 @@
           echo ""
           echo "Type 'exit' to return to your previous user"
           echo ""
-          rm -f ~/.clawdbot-welcome
+          rm -f ~/.openclaw-welcome
 
     - name: Add welcome message to .bashrc
       ansible.builtin.lineinfile:
-        path: /home/clawdbot/.bashrc
-        line: '[ -f ~/.clawdbot-welcome ] && source ~/.clawdbot-welcome'
+        path: /home/openclaw/.bashrc
+        line: '[ -f ~/.openclaw-welcome ] && source ~/.openclaw-welcome'
         state: present
         insertafter: EOF
 
     - name: Notify that playbook is complete
       ansible.builtin.debug:
-        msg: "✅ Clawdbot installation complete!"
+        msg: "✅ OpenClaw installation complete!"

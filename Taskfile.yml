@@ -1,0 +1,74 @@
+version: '3'
+silent: true
+
+vars:
+  playbook: playbook.yml
+  inventory: inventory.ini
+  extra_args: ""
+
+tasks:
+  install-galaxy:
+    desc: Install Ansible Galaxy collections from requirements.yml
+    cmds:
+      - ansible-galaxy collection install -r requirements.yml
+
+  lint:
+    desc: Ansible syntax check
+    cmds:
+      - ansible-playbook "{{.playbook}}" -i "{{.inventory}}" --syntax-check
+
+  dry-run:
+    desc: Dry run (check) the playbook
+    cmds:
+      - ansible-playbook "{{.playbook}}" -i "{{.inventory}}" --check {{.extra_args}}
+
+  run:
+    desc: Run the playbook (apply changes)
+    cmds:
+      - ansible-playbook "{{.playbook}}" -i "{{.inventory}}" {{.extra_args}}
+
+  full-install:
+    desc: One-command install (curl | bash) for remote install script
+    cmds:
+      - curl -fsSL https://raw.githubusercontent.com/.../install.sh | bash
+
+  verify-security:
+    desc: Run post-install security verification commands (local)
+    cmds:
+      - sudo ufw status verbose
+      - sudo iptables -L DOCKER-USER -n
+      - sudo ss -tlnp
+
+  test-external-scan:
+    desc: External port scan (replace TARGET_IP)
+    cmds:
+      - test -n "$TARGET_IP" || (echo "Set TARGET_IP env var" && exit 1)
+      - nmap -p- "$TARGET_IP"
+
+  all-checks:
+    desc: Run install-galaxy, lint, dry-run in sequence
+    deps:
+      - install-galaxy
+      - lint
+      - dry-run
+
+  install:dev:
+    desc: Install development version
+    cmds:
+      - |
+        ansible-playbook playbook.yml \
+        --ask-become-pass \
+        -e openclaw_install_mode=development
+  ui:tunnel:
+    desc: Start UI tunnel (local)
+    cmds:
+      - |
+        host="$(awk '
+          /^[[:space:]]*#/ { next }
+          /^[[:space:]]*$/ { next }
+          /^\[.*\]/ { next }
+          { print $1; exit }
+        ' inventory.ini 2>/dev/null)"
+        host="${host:-localhost}"
+        echo "Starting SSH tunnel to ${host}..."
+        echo "ssh -N -L 18789:127.0.0.1:18789 openclaw@${host}"
