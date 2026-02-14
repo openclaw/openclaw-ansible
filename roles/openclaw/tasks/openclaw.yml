@@ -14,11 +14,11 @@
     group: "{{ openclaw_user }}"
     mode: "{{ item.mode }}"
   loop:
-    - { path: "{{ openclaw_config_dir }}", mode: '0755' }
-    - { path: "{{ openclaw_config_dir }}/sessions", mode: '0755' }
-    - { path: "{{ openclaw_config_dir }}/credentials", mode: '0700' }
-    - { path: "{{ openclaw_config_dir }}/data", mode: '0755' }
-    - { path: "{{ openclaw_config_dir }}/logs", mode: '0755' }
+    - { path: "{{ openclaw_config_dir }}", mode: "0755" }
+    - { path: "{{ openclaw_config_dir }}/sessions", mode: "0755" }
+    - { path: "{{ openclaw_config_dir }}/credentials", mode: "0700" }
+    - { path: "{{ openclaw_config_dir }}/data", mode: "0755" }
+    - { path: "{{ openclaw_config_dir }}/logs", mode: "0755" }
 
 - name: Create pnpm directories
   ansible.builtin.file:
@@ -26,7 +26,7 @@
     state: directory
     owner: "{{ openclaw_user }}"
     group: "{{ openclaw_user }}"
-    mode: '0755'
+    mode: "0755"
   loop:
     - "{{ openclaw_home }}/.local/share/pnpm"
     - "{{ openclaw_home }}/.local/share/pnpm/store"
@@ -39,7 +39,7 @@
     owner: "{{ openclaw_user }}"
     group: "{{ openclaw_user }}"
     recurse: true
-    mode: '0755'
+    mode: "0755"
 
 - name: Configure pnpm for openclaw user
   ansible.builtin.shell:
@@ -87,7 +87,7 @@
     create: true
     owner: "{{ openclaw_user }}"
     group: "{{ openclaw_user }}"
-    mode: '0644'
+    mode: "0644"
     insertafter: EOF
 
 # NOTE: We do NOT create config.yml here - openclaw onboard/configure will do that

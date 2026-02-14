@@ -12,14 +12,14 @@
     scope: global
     value: "{{ item.value }}"
   loop:
-    - { name: 'init.defaultBranch', value: 'main' }
-    - { name: 'pull.rebase', value: 'false' }
-    - { name: 'core.editor', value: 'vim' }
-    - { name: 'color.ui', value: 'auto' }
-    - { name: 'alias.st', value: 'status' }
-    - { name: 'alias.co', value: 'checkout' }
-    - { name: 'alias.br', value: 'branch' }
-    - { name: 'alias.ci', value: 'commit' }
-    - { name: 'alias.unstage', value: 'reset HEAD --' }
-    - { name: 'alias.last', value: 'log -1 HEAD' }
-    - { name: 'alias.lg', value: 'log --oneline --graph --decorate --all' }
+    - { name: "init.defaultBranch", value: "main" }
+    - { name: "pull.rebase", value: "false" }
+    - { name: "core.editor", value: "vim" }
+    - { name: "color.ui", value: "auto" }
+    - { name: "alias.st", value: "status" }
+    - { name: "alias.co", value: "checkout" }
+    - { name: "alias.br", value: "branch" }
+    - { name: "alias.ci", value: "commit" }
+    - { name: "alias.unstage", value: "reset HEAD --" }
+    - { name: "alias.last", value: "log -1 HEAD" }
+    - { name: "alias.lg", value: "log --oneline --graph --decorate --all" }

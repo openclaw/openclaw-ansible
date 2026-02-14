@@ -11,7 +11,7 @@
   ansible.builtin.file:
     path: /etc/apt/keyrings
     state: directory
-    mode: '0755'
+    mode: "0755"
 
 - name: Add NodeSource GPG key
   ansible.builtin.shell:
@@ -51,6 +51,7 @@
 - name: Install pnpm globally
   ansible.builtin.command: npm install -g pnpm
   when: pnpm_check.rc != 0
+  changed_when: true
 
 - name: Verify Node.js installation
   ansible.builtin.command: node --version

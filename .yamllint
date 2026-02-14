@@ -9,7 +9,7 @@ rules:
     spaces: 2
     indent-sequences: true
   truthy:
-    allowed-values: ['true', 'false']
+    allowed-values: ["true", "false"]
     check-keys: false
   comments:
     min-spaces-from-content: 1

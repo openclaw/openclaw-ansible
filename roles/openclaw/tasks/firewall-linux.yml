@@ -13,7 +13,7 @@
     dest: /etc/fail2ban/jail.local
     owner: root
     group: root
-    mode: '0644'
+    mode: "0644"
     content: |
       # OpenClaw security hardening - SSH protection
       [DEFAULT]
@@ -48,7 +48,7 @@
     dest: /etc/apt/apt.conf.d/20auto-upgrades
     owner: root
     group: root
-    mode: '0644'
+    mode: "0644"
     content: |
       APT::Periodic::Update-Package-Lists "1";
       APT::Periodic::Unattended-Upgrade "1";
@@ -59,7 +59,7 @@
     dest: /etc/apt/apt.conf.d/50unattended-upgrades
     owner: root
     group: root
-    mode: '0644'
+    mode: "0644"
     content: |
       // OpenClaw security hardening - automatic security updates
       Unattended-Upgrade::Allowed-Origins {
@@ -86,23 +86,23 @@
     direction: "{{ item.direction }}"
     policy: "{{ item.policy }}"
   loop:
-    - { direction: 'incoming', policy: 'deny' }
-    - { direction: 'outgoing', policy: 'allow' }
-    - { direction: 'routed', policy: 'deny' }
+    - { direction: "incoming", policy: "deny" }
+    - { direction: "outgoing", policy: "allow" }
+    - { direction: "routed", policy: "deny" }
 
 - name: Allow SSH on port 22
   community.general.ufw:
     rule: allow
-    port: '22'
+    port: "22"
     proto: tcp
-    comment: 'SSH'
+    comment: "SSH"
 
 - name: Allow Tailscale UDP port 41641
   community.general.ufw:
     rule: allow
-    port: '41641'
+    port: "41641"
     proto: udp
-    comment: 'Tailscale'
+    comment: "Tailscale"
   when: tailscale_enabled | bool
 
 - name: Get default network interface
@@ -145,7 +145,7 @@
   ansible.builtin.file:
     path: /etc/docker
     state: directory
-    mode: '0755'
+    mode: "0755"
 
 - name: Configure Docker daemon to work with UFW
   ansible.builtin.template:
@@ -153,7 +153,7 @@
     dest: /etc/docker/daemon.json
     owner: root
     group: root
-    mode: '0644'
+    mode: "0644"
   notify: Restart docker
 
 - name: Enable UFW

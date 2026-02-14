@@ -15,7 +15,7 @@
     owner: "{{ openclaw_user }}"
     group: "{{ openclaw_user }}"
     state: directory
-    mode: '0755'
+    mode: "0755"
 
 - name: Configure .bashrc for openclaw user
   ansible.builtin.blockinfile:
@@ -41,12 +41,12 @@
     create: true
     owner: "{{ openclaw_user }}"
     group: "{{ openclaw_user }}"
-    mode: '0644'
+    mode: "0644"
 
 - name: Add openclaw user to sudoers with scoped NOPASSWD
   ansible.builtin.copy:
     dest: /etc/sudoers.d/openclaw
-    mode: '0440'
+    mode: "0440"
     owner: root
     group: root
     content: |
@@ -99,7 +99,7 @@
     dest: "{{ openclaw_home }}/.bash_profile"
     owner: "{{ openclaw_user }}"
     group: "{{ openclaw_user }}"
-    mode: '0644'
+    mode: "0644"
     content: |
       # .bash_profile - Executed for login shells
       # Source .bashrc to ensure environment is loaded for login shells
@@ -130,7 +130,7 @@
     state: directory
     owner: openclaw
     group: openclaw
-    mode: '0700'
+    mode: "0700"
   when: ansible_os_family == 'Debian' and not ci_test
 
 - name: Store openclaw UID as fact for later use
@@ -145,7 +145,7 @@
     state: directory
     owner: openclaw
     group: openclaw
-    mode: '0700'
+    mode: "0700"
 
 - name: Add SSH authorized keys for openclaw user
   ansible.posix.authorized_key:
@@ -168,12 +168,12 @@
 - name: Set XDG_RUNTIME_DIR in .bashrc for openclaw user
   ansible.builtin.lineinfile:
     path: /home/openclaw/.bashrc
-    line: 'export XDG_RUNTIME_DIR=/run/user/$(id -u)'
+    line: "export XDG_RUNTIME_DIR=/run/user/$(id -u)"
     state: present
     create: true
     owner: openclaw
     group: openclaw
-    mode: '0644'
+    mode: "0644"
   when: ansible_os_family == 'Debian' and not ci_test
 
 - name: Set DBUS_SESSION_BUS_ADDRESS in .bashrc for openclaw user
@@ -190,5 +190,5 @@
     create: true
     owner: openclaw
     group: openclaw
-    mode: '0644'
+    mode: "0644"
   when: ansible_os_family == 'Debian' and not ci_test

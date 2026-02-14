@@ -82,7 +82,7 @@
       ansible.builtin.template:
         src: roles/openclaw/templates/show-lobster.sh.j2
         dest: /tmp/show-lobster.sh
-        mode: '0755'
+        mode: "0755"
 
     - name: Display ASCII art
       ansible.builtin.command: /tmp/show-lobster.sh
@@ -93,7 +93,7 @@
         dest: /home/openclaw/.openclaw-welcome
         owner: openclaw
         group: openclaw
-        mode: '0644'
+        mode: "0644"
         content: |
           echo ""
           echo "╔════════════════════════════════════════════════════════╗"
@@ -169,7 +169,7 @@
     - name: Add welcome message to .bashrc
       ansible.builtin.lineinfile:
         path: /home/openclaw/.bashrc
-        line: '[ -f ~/.openclaw-welcome ] && source ~/.openclaw-welcome'
+        line: "[ -f ~/.openclaw-welcome ] && source ~/.openclaw-welcome"
         state: present
         insertafter: EOF
 

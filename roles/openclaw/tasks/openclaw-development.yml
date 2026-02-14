@@ -7,7 +7,7 @@
     state: directory
     owner: "{{ openclaw_user }}"
     group: "{{ openclaw_user }}"
-    mode: '0755'
+    mode: "0755"
 
 - name: Check if openclaw repository already exists
   ansible.builtin.stat:
@@ -66,7 +66,7 @@
     PATH: "{{ openclaw_home }}/.local/bin:{{ openclaw_home }}/.local/share/pnpm:/usr/local/bin:/usr/bin:/bin"
     HOME: "{{ openclaw_home }}"
   register: pnpm_build_result
-  changed_when: true  # Build always changes dist/ directory
+  changed_when: true # Build always changes dist/ directory
 
 - name: Display build output
   ansible.builtin.debug:
@@ -100,7 +100,7 @@
 - name: Make openclaw binary executable
   ansible.builtin.file:
     path: "{{ openclaw_repo_dir }}/bin/openclaw.js"
-    mode: '0755'
+    mode: "0755"
     owner: "{{ openclaw_user }}"
     group: "{{ openclaw_user }}"
 
@@ -139,4 +139,4 @@
     create: true
     owner: "{{ openclaw_user }}"
     group: "{{ openclaw_user }}"
-    mode: '0644'
+    mode: "0644"

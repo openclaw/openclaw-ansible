@@ -2,12 +2,12 @@
 profile: production
 
 skip_list:
-  - var-naming[no-role-prefix]  # Allow variables without role prefix
-  - risky-shell-pipe  # We handle pipefail where needed
-  - command-instead-of-module  # curl for GPG keys is intentional
+  - var-naming[no-role-prefix] # Allow variables without role prefix
+  - risky-shell-pipe # We handle pipefail where needed
+  - command-instead-of-module # curl for GPG keys is intentional
 
 warn_list:
-  - args[module]  # Warn on module args issues
+  - args[module] # Warn on module args issues
 
 kinds:
   - playbook: "**/playbook.yml"

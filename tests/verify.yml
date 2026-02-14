@@ -59,12 +59,14 @@
       ansible.builtin.stat:
         path: /etc/vim/vimrc.local
       register: vimrc
-    - ansible.builtin.assert:
+    - name: Assert vimrc exists
+      ansible.builtin.assert:
         that: vimrc.stat.exists
 
     - name: Verify git global config
       ansible.builtin.command: git config --global init.defaultBranch
       changed_when: false
       register: git_branch
-    - ansible.builtin.assert:
+    - name: Assert git default branch is main
+      ansible.builtin.assert:
         that: git_branch.stdout == 'main'
