@@ -1,5 +1,4 @@
 #!/bin/bash
-set -e
 
 # Accept variables with fallbacks
 openclaw_user="${1:-openclaw}"
@@ -8,40 +7,6 @@ openclaw_home="${2:-/home/openclaw}"
 # Enable 256 colors
 export TERM=xterm-256color
 export COLORTERM=truecolor
-
-# Colors
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-CYAN='\033[0;36m'
-NC='\033[0m' # No Color
-
-# OpenClaw ASCII Art Lobster
-cat << 'LOBSTER'
-[0;36m
-   +====================================================+
-   |                                                    |
-   |         [0;33mWelcome to OpenClaw! [0;31m🦞[0;36m                    |
-   |                                                    |
-   |[0;31m                   ,.---._                         [0;36m|
-   |[0;31m               ,,,,     /       `,                 [0;36m|
-   |[0;31m                \\\\\\   /    '\_  ;                [0;36m|
-   |[0;31m                 |||| /\/``-.__\;'                 [0;36m|
-   |[0;31m                 ::::/\/_                          [0;36m|
-   |[0;31m {{`-.__.-'(`(^^(^^^(^ 9 `.========='              [0;36m|
-   |[0;31m{{{{{{ { ( ( (  (   (-----:=                      [0;36m|
-   |[0;31m {{.-'~~'-.(,(,,(,,,(__6_.'=========.              [0;36m|
-   |[0;31m                 ::::\/\                           [0;36m|
-   |[0;31m                 |||| \/\  ,-'/,                   [0;36m|
-   |[0;31m                ////   \ `` _/ ;                   [0;36m|
-   |[0;31m               ''''     \  `  .'                   [0;36m|
-   |[0;31m                         `---'                     [0;36m|
-   |                                                    |
-   |           [0;32m✅  Installation Successful![0;36m             |
-   |                                                    |
-   +====================================================+[0m
-LOBSTER
 
 echo ""
 echo -e "${GREEN}🔒 Security Status:${NC}"
