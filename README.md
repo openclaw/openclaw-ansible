@@ -146,6 +146,91 @@ ansible-playbook playbook.yml --check --diff  # Dry run
 ansible-playbook playbook.yml --ask-become-pass
 ```
 
+
+## Security Hardening
+
+This playbook includes comprehensive security hardening that is enabled by default:
+
+### SSH Hardening
+
+- **Disabled password authentication** - Key-based auth only
+- **Disabled root login** - Must use regular user with sudo
+- **Strong ciphers only** - AES-256-GCM, ChaCha20-Poly1305
+- **Strong key exchange** - Curve25519, DH Group Exchange SHA256
+- **Session timeouts** - Idle sessions disconnected after 10 minutes
+- **Rate limiting** - MaxStartups 10:30:60, MaxAuthTries 3
+- **Security banner** - Warns unauthorized users
+
+### Kernel Hardening
+
+Network security via sysctl:
+- **SYN flood protection** - TCP syncookies enabled
+- **IP spoofing prevention** - Reverse path filtering
+- **ICMP hardening** - Redirects disabled, broadcasts ignored
+- **Source routing disabled** - Prevents source route attacks
+
+Kernel security:
+- **ASLR enabled** - Full address space randomization
+- **Kernel pointer restriction** - kptr_restrict=2
+- **dmesg restriction** - Non-root can't read kernel logs
+- **Ptrace restriction** - Yama ptrace_scope=1
+- **Symlink/hardlink protection** - Prevents privilege escalation
+
+### Audit Logging
+
+Comprehensive security event logging via auditd:
+- **Authentication events** - Login attempts, PAM changes, passwd/shadow modifications
+- **Privilege escalation** - sudo/su usage, setuid/setgid calls
+- **Network changes** - Firewall rules, hosts file, network config
+- **SSH config changes** - sshd_config modifications
+- **OpenClaw specific** - Config changes, service modifications, binary execution
+- **Docker monitoring** - Daemon config, container operations
+- **Kernel modules** - Module loading/unloading events
+- **Time changes** - System clock modifications
+
+### Configuration Options
+
+All security features can be toggled via variables:
+
+```yaml
+# In your playbook or via -e flag
+ssh_hardening_enabled: true      # SSH hardening (default: true)
+kernel_hardening_enabled: true   # Kernel sysctl hardening (default: true)
+audit_logging_enabled: true      # Auditd logging (default: true)
+
+# Additional options
+disable_usb_storage: false       # Disable USB storage devices
+harden_tmp_mount: false          # Mount /tmp with noexec,nosuid,nodev
+```
+
+**⚠️ Warning**: Before enabling SSH hardening, ensure you have SSH key access configured. Password authentication will be disabled!
+
+### Viewing Audit Logs
+
+```bash
+# View recent security events
+sudo ausearch -ts recent
+
+# View failed login attempts
+sudo ausearch -m USER_LOGIN -sv no
+
+# View sudo usage
+sudo ausearch -k sudo_usage
+
+# View OpenClaw config changes
+sudo ausearch -k openclaw_config
+
+# Generate audit report
+sudo aureport --summary
+```
+
+### Compliance
+
+These hardening measures align with:
+- CIS Benchmark for Debian/Ubuntu
+- NIST 800-53 security controls
+- SOC 2 Type II requirements
+
 ## Documentation
 
 - [Configuration Guide](docs/configuration.md) - All configuration options

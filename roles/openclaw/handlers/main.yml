@@ -8,3 +8,22 @@
   ansible.builtin.systemd:
     name: fail2ban
     state: restarted
+
+- name: Restart sshd
+  ansible.builtin.systemd:
+    name: sshd
+    state: restarted
+
+- name: Restart auditd
+  ansible.builtin.systemd:
+    name: auditd
+    state: restarted
+
+- name: Apply sysctl settings
+  ansible.builtin.command: sysctl --system
+  changed_when: true
+
+- name: Remount tmp
+  ansible.posix.mount:
+    path: /tmp
+    state: remounted

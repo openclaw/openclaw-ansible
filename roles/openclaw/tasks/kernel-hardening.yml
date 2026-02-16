@@ -1,0 +1,166 @@
+---
+# Kernel security hardening via sysctl
+# Implements CIS Benchmark and general security best practices
+
+- name: Create sysctl security configuration
+  ansible.builtin.copy:
+    dest: /etc/sysctl.d/99-openclaw-security.conf
+    owner: root
+    group: root
+    mode: '0644'
+    content: |
+      # OpenClaw Security Hardening - Kernel Parameters
+      # Applied via: sysctl -p /etc/sysctl.d/99-openclaw-security.conf
+
+      #############################
+      # Network Security Settings #
+      #############################
+
+      # Enable TCP SYN cookies (protection against SYN flood attacks)
+      net.ipv4.tcp_syncookies = 1
+
+      # Enable reverse path filtering (prevent IP spoofing)
+      net.ipv4.conf.all.rp_filter = 1
+      net.ipv4.conf.default.rp_filter = 1
+
+      # Disable ICMP redirects (prevent MITM attacks)
+      net.ipv4.conf.all.accept_redirects = 0
+      net.ipv4.conf.default.accept_redirects = 0
+      net.ipv4.conf.all.secure_redirects = 0
+      net.ipv4.conf.default.secure_redirects = 0
+      net.ipv6.conf.all.accept_redirects = 0
+      net.ipv6.conf.default.accept_redirects = 0
+
+      # Don't send ICMP redirects (we're not a router)
+      net.ipv4.conf.all.send_redirects = 0
+      net.ipv4.conf.default.send_redirects = 0
+
+      # Ignore ICMP broadcast requests (Smurf attack prevention)
+      net.ipv4.icmp_echo_ignore_broadcasts = 1
+
+      # Ignore bogus ICMP error responses
+      net.ipv4.icmp_ignore_bogus_error_responses = 1
+
+      # Log Martian packets (packets with impossible addresses)
+      net.ipv4.conf.all.log_martians = 1
+      net.ipv4.conf.default.log_martians = 1
+
+      # Disable source routing (prevent source route attacks)
+      net.ipv4.conf.all.accept_source_route = 0
+      net.ipv4.conf.default.accept_source_route = 0
+      net.ipv6.conf.all.accept_source_route = 0
+      net.ipv6.conf.default.accept_source_route = 0
+
+      # Disable IP forwarding (we're not a router) - Docker may override this
+      # net.ipv4.ip_forward = 0
+      # net.ipv6.conf.all.forwarding = 0
+
+      # TCP hardening
+      net.ipv4.tcp_timestamps = 1
+      net.ipv4.tcp_max_syn_backlog = 2048
+      net.ipv4.tcp_synack_retries = 2
+      net.ipv4.tcp_syn_retries = 5
+
+      # Disable IPv6 router advertisements
+      net.ipv6.conf.all.accept_ra = 0
+      net.ipv6.conf.default.accept_ra = 0
+
+      ###########################
+      # Kernel Security Settings #
+      ###########################
+
+      # Enable ASLR (Address Space Layout Randomization)
+      kernel.randomize_va_space = 2
+
+      # Restrict access to kernel logs
+      kernel.dmesg_restrict = 1
+
+      # Restrict access to kernel pointers
+      kernel.kptr_restrict = 2
+
+      # Restrict ptrace (debugging) to parent processes only
+      kernel.yama.ptrace_scope = 1
+
+      # Disable magic SysRq key (prevents emergency console access)
+      kernel.sysrq = 0
+
+      # Restrict unprivileged access to BPF
+      kernel.unprivileged_bpf_disabled = 1
+
+      # Restrict unprivileged user namespaces
+      # Note: May conflict with Docker - commented out by default
+      # kernel.unprivileged_userns_clone = 0
+
+      # Limit core dumps
+      fs.suid_dumpable = 0
+
+      # Protect symlinks and hardlinks
+      fs.protected_symlinks = 1
+      fs.protected_hardlinks = 1
+
+      # Protect FIFOs and regular files
+      fs.protected_fifos = 2
+      fs.protected_regular = 2
+  notify: Apply sysctl settings
+
+- name: Apply sysctl settings immediately
+  ansible.builtin.command: sysctl -p /etc/sysctl.d/99-openclaw-security.conf
+  changed_when: true
+
+- name: Disable unused filesystems
+  ansible.builtin.copy:
+    dest: /etc/modprobe.d/openclaw-disable-filesystems.conf
+    owner: root
+    group: root
+    mode: '0644'
+    content: |
+      # Disable unused filesystems for security
+      # These filesystems are rarely needed and can be attack vectors
+
+      install cramfs /bin/true
+      install freevxfs /bin/true
+      install jffs2 /bin/true
+      install hfs /bin/true
+      install hfsplus /bin/true
+      install squashfs /bin/true
+      install udf /bin/true
+
+      # Disable uncommon network protocols
+      install dccp /bin/true
+      install sctp /bin/true
+      install rds /bin/true
+      install tipc /bin/true
+
+- name: Disable USB storage (optional - enable if USB not needed)
+  ansible.builtin.copy:
+    dest: /etc/modprobe.d/openclaw-disable-usb-storage.conf
+    owner: root
+    group: root
+    mode: '0644'
+    content: |
+      # Disable USB storage devices
+      # Uncomment the line below if USB storage is not needed
+      # install usb-storage /bin/true
+  when: disable_usb_storage | default(false) | bool
+
+- name: Set restrictive permissions on sensitive files
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    mode: "{{ item.mode }}"
+  loop:
+    - { path: '/etc/crontab', mode: '0600' }
+    - { path: '/etc/cron.hourly', mode: '0700' }
+    - { path: '/etc/cron.daily', mode: '0700' }
+    - { path: '/etc/cron.weekly', mode: '0700' }
+    - { path: '/etc/cron.monthly', mode: '0700' }
+    - { path: '/etc/cron.d', mode: '0700' }
+  ignore_errors: true
+
+- name: Ensure /tmp is mounted with noexec,nosuid,nodev
+  ansible.builtin.lineinfile:
+    path: /etc/fstab
+    regexp: '^tmpfs\s+/tmp'
+    line: 'tmpfs /tmp tmpfs defaults,noexec,nosuid,nodev 0 0'
+    state: present
+  notify: Remount tmp
+  when: harden_tmp_mount | default(false) | bool

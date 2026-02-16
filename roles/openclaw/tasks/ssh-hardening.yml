@@ -1,0 +1,108 @@
+---
+# SSH security hardening
+# Implements CIS Benchmark recommendations for SSH
+
+- name: Ensure SSH server is installed
+  ansible.builtin.apt:
+    name: openssh-server
+    state: present
+
+- name: Backup original sshd_config
+  ansible.builtin.copy:
+    src: /etc/ssh/sshd_config
+    dest: /etc/ssh/sshd_config.backup
+    remote_src: true
+    force: false
+    mode: '0600'
+
+- name: Harden SSH configuration
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+    state: present
+    validate: 'sshd -t -f %s'
+  loop:
+    # Disable root login
+    - { regexp: '^#?PermitRootLogin', line: 'PermitRootLogin no' }
+    # Disable password authentication (key-only)
+    - { regexp: '^#?PasswordAuthentication', line: 'PasswordAuthentication no' }
+    # Disable empty passwords
+    - { regexp: '^#?PermitEmptyPasswords', line: 'PermitEmptyPasswords no' }
+    # Limit authentication attempts
+    - { regexp: '^#?MaxAuthTries', line: 'MaxAuthTries 3' }
+    # Set login grace time
+    - { regexp: '^#?LoginGraceTime', line: 'LoginGraceTime 60' }
+    # Disable X11 forwarding
+    - { regexp: '^#?X11Forwarding', line: 'X11Forwarding no' }
+    # Disable TCP forwarding (can be enabled if needed)
+    - { regexp: '^#?AllowTcpForwarding', line: 'AllowTcpForwarding no' }
+    # Disable agent forwarding
+    - { regexp: '^#?AllowAgentForwarding', line: 'AllowAgentForwarding no' }
+    # Set client alive interval (disconnect idle sessions)
+    - { regexp: '^#?ClientAliveInterval', line: 'ClientAliveInterval 300' }
+    # Set client alive count max
+    - { regexp: '^#?ClientAliveCountMax', line: 'ClientAliveCountMax 2' }
+    # Disable host-based authentication
+    - { regexp: '^#?HostbasedAuthentication', line: 'HostbasedAuthentication no' }
+    # Ignore rhosts
+    - { regexp: '^#?IgnoreRhosts', line: 'IgnoreRhosts yes' }
+    # Use strong ciphers only
+    - { regexp: '^#?Ciphers', line: 'Ciphers aes256-gcm@openssh.com,chacha20-poly1305@openssh.com,aes256-ctr' }
+    # Use strong MACs only
+    - { regexp: '^#?MACs', line: 'MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,hmac-sha2-512,hmac-sha2-256' }
+    # Use strong key exchange algorithms
+    - { regexp: '^#?KexAlgorithms', line: 'KexAlgorithms curve25519-sha256@libssh.org,diffie-hellman-group-exchange-sha256' }
+    # Disable protocol 1 (should be default, but explicit is better)
+    - { regexp: '^#?Protocol', line: 'Protocol 2' }
+    # Log level for security auditing
+    - { regexp: '^#?LogLevel', line: 'LogLevel VERBOSE' }
+    # Use PAM
+    - { regexp: '^#?UsePAM', line: 'UsePAM yes' }
+    # Disable challenge response
+    - { regexp: '^#?ChallengeResponseAuthentication', line: 'ChallengeResponseAuthentication no' }
+    # Set max sessions
+    - { regexp: '^#?MaxSessions', line: 'MaxSessions 4' }
+    # Set max startups (rate limiting)
+    - { regexp: '^#?MaxStartups', line: 'MaxStartups 10:30:60' }
+  notify: Restart sshd
+
+- name: Set SSH banner
+  ansible.builtin.copy:
+    dest: /etc/ssh/banner
+    owner: root
+    group: root
+    mode: '0644'
+    content: |
+      **************************************************************************
+      *                           AUTHORIZED ACCESS ONLY                       *
+      *                                                                        *
+      * This system is for authorized users only. All activity may be          *
+      * monitored and recorded. Unauthorized access is prohibited and          *
+      * may be subject to legal action.                                        *
+      *                                                                        *
+      * By accessing this system, you consent to monitoring and agree          *
+      * to comply with all applicable policies.                                *
+      **************************************************************************
+
+- name: Configure SSH to use banner
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?Banner'
+    line: 'Banner /etc/ssh/banner'
+    state: present
+    validate: 'sshd -t -f %s'
+  notify: Restart sshd
+
+- name: Ensure SSH service is enabled and running
+  ansible.builtin.systemd:
+    name: sshd
+    state: started
+    enabled: true
+
+- name: Set correct permissions on SSH config
+  ansible.builtin.file:
+    path: /etc/ssh/sshd_config
+    owner: root
+    group: root
+    mode: '0600'

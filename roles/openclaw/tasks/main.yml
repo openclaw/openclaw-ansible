@@ -17,6 +17,25 @@
   ansible.builtin.include_tasks: firewall-linux.yml
   when: not ci_test
 
+# Security hardening tasks
+- name: Include SSH hardening tasks
+  ansible.builtin.include_tasks: ssh-hardening.yml
+  when: 
+    - not ci_test
+    - ssh_hardening_enabled | default(true) | bool
+
+- name: Include kernel hardening tasks
+  ansible.builtin.include_tasks: kernel-hardening.yml
+  when:
+    - not ci_test
+    - kernel_hardening_enabled | default(true) | bool
+
+- name: Include audit logging tasks
+  ansible.builtin.include_tasks: audit-logging.yml
+  when:
+    - not ci_test
+    - audit_logging_enabled | default(true) | bool
+
 - name: Include Node.js installation tasks
   ansible.builtin.include_tasks: nodejs.yml
 

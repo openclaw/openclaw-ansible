@@ -40,3 +40,29 @@ openclaw_repo_dir: "{{ openclaw_code_dir }}/openclaw"
 #     - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx user@host"
 #     - "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDxxxxxxxxxxxxxxxxxxxxxxx user@host"
 openclaw_ssh_keys: []
+
+#############################
+# Security Hardening Options
+#############################
+
+# SSH Hardening
+# Disables password auth, root login, enables strong ciphers, etc.
+# WARNING: Ensure you have SSH key access before enabling!
+ssh_hardening_enabled: true
+
+# Kernel Hardening
+# Applies sysctl security settings (network hardening, ASLR, etc.)
+kernel_hardening_enabled: true
+
+# Audit Logging
+# Installs and configures auditd for security event logging
+audit_logging_enabled: true
+
+# Additional Security Options
+
+# Disable USB storage (set to true for high-security environments)
+disable_usb_storage: false
+
+# Harden /tmp mount (mount with noexec,nosuid,nodev)
+# May cause issues with some applications that need to execute from /tmp
+harden_tmp_mount: false
