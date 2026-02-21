@@ -183,9 +183,7 @@
     block: |
       # DBus session bus configuration
       if [ -z "$DBUS_SESSION_BUS_ADDRESS" ]; then
-        if [ -f "${XDG_RUNTIME_DIR}/bus" ]; then
-          export DBUS_SESSION_BUS_ADDRESS="unix:path=${XDG_RUNTIME_DIR}/bus"
-        fi
+        export DBUS_SESSION_BUS_ADDRESS="unix:path=${XDG_RUNTIME_DIR}/bus"
       fi
     create: true
     owner: "{{ openclaw_user }}"
