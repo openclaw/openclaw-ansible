@@ -146,6 +146,38 @@ ansible-playbook playbook.yml --check --diff  # Dry run
 ansible-playbook playbook.yml --ask-become-pass
 ```
 
+## Remote Deployment
+
+To deploy OpenClaw to a remote server using SSH instead of running locally:
+
+1. Clone the repository and install dependencies:
+   ```bash
+   git clone https://github.com/openclaw/openclaw-ansible.git
+   cd openclaw-ansible
+   ansible-galaxy collection install -r requirements.yml
+   ```
+
+2. Create your inventory file:
+   ```bash
+   cp inventory.example.yml inventory.yml
+   ```
+
+3. Edit `inventory.yml` with your server's IP and SSH details.
+
+4. Create a `vars.yml` file to specify the target hosts and any other configurations:
+   ```bash
+   cat > vars.yml << EOF
+   target_hosts: openclaw
+   EOF
+   ```
+
+5. Run the playbook targeting the remote server:
+   ```bash
+   ansible-playbook -i inventory.yml playbook.yml -e @vars.yml
+   ```
+
+*(Note: `inventory.yml` and `vars.yml` are ignored by git to protect your server credentials.)*
+
 ## Documentation
 
 - [Configuration Guide](docs/configuration.md) - All configuration options

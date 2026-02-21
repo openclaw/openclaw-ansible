@@ -1,7 +1,6 @@
 ---
 - name: Install OpenClaw with Docker and UFW firewall
-  hosts: localhost
-  connection: local
+  hosts: "{{ target_hosts | default('localhost') }}"
   become: true
 
   vars:

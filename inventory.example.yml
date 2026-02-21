@@ -1,0 +1,22 @@
+# Example Ansible Inventory File for Remote Deployment
+#
+# Copy this file to inventory.yml (which is ignored by git)
+# and configure it with your remote server's details.
+#
+# Note: Variables like target_hosts, openclaw_install_mode, etc.,
+# should go in a separate vars.yml file instead of here.
+all:
+  children:
+    openclaw:
+      hosts:
+        openclaw_server:
+          # REQUIRED: The IP address or hostname of your target server
+          ansible_host: 192.168.1.100
+          
+          # REQUIRED: The SSH user to connect as
+          ansible_user: root  # Or ubuntu, debian, ec2-user, etc.
+          
+          # OPTIONAL SETTINGS:
+          # ansible_port: 2222
+          # ansible_ssh_private_key_file: ~/.ssh/id_rsa
+          # ansible_password: your_ssh_password (Not recommended)

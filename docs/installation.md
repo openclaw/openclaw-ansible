@@ -33,6 +33,38 @@ ansible-galaxy collection install -r requirements.yml
 ansible-playbook playbook.yml --ask-become-pass
 ```
 
+## Remote Deployment via SSH
+
+To deploy OpenClaw to a remote server instead of installing it locally:
+
+1. Clone the repository and install requirements on your local machine:
+   ```bash
+   git clone https://github.com/openclaw/openclaw-ansible.git
+   cd openclaw-ansible
+   ansible-galaxy collection install -r requirements.yml
+   ```
+
+2. Create an Ansible inventory file from the provided example:
+   ```bash
+   cp inventory.example.yml inventory.yml
+   ```
+
+3. Edit `inventory.yml` to specify your remote server's connection details (IP address, SSH user, key path, etc.).
+
+4. Create a `vars.yml` file to specify the target group from your inventory and any other options:
+   ```bash
+   cat > vars.yml << EOF
+   target_hosts: openclaw
+   EOF
+   ```
+   
+   *Note: `inventory.yml` and `vars.yml` are ignored by git so your server details and secrets will not be committed.*
+
+5. Run the playbook targeting the remote server:
+   ```bash
+   ansible-playbook -i inventory.yml playbook.yml -e @vars.yml
+   ```
+
 ## Post-Installation
 
 ### 1. Connect to Tailscale

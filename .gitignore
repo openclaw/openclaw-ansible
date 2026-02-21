@@ -13,3 +13,7 @@ vault.yml
 id_rsa*
 host_vars/
 group_vars/
+inventory.yml
+inventory.ini
+vars.yml
+vars-*.yml
