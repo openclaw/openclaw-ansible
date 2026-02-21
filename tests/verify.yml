@@ -10,7 +10,7 @@
 
   tasks:
     - name: Verify openclaw user exists
-      ansible.builtin.command: id openclaw
+      ansible.builtin.command: "id {{ openclaw_user }}"
       changed_when: false
 
     - name: Verify critical packages installed
@@ -52,7 +52,7 @@
         fail_msg: "credentials dir should be 0700"
 
     - name: Verify sudoers file exists and is valid
-      ansible.builtin.command: visudo -cf /etc/sudoers.d/openclaw
+      ansible.builtin.command: "visudo -cf /etc/sudoers.d/{{ openclaw_user }}"
       changed_when: false
 
     - name: Verify global vim config exists
