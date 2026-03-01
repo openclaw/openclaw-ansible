@@ -148,6 +148,7 @@ ansible-playbook playbook.yml --ask-become-pass
 
 ## Documentation
 
+- [Operator Runbook](docs/operator-runbook.md) - End-to-end profile/agent/OAuth/queue operations guide
 - [Configuration Guide](docs/configuration.md) - All configuration options
 - [Development Mode](docs/development-mode.md) - Build from source
 - [Security Architecture](docs/security.md) - Security details

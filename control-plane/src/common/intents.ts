@@ -1,17 +1,27 @@
-const ROUTING_RULES: Array<{ intent: string; agent: string; keywords: string[] }> = [
+interface RoutingRule {
+  intent: string;
+  agent: string;
+  description: string;
+  keywords: string[];
+}
+
+const ROUTING_RULES: RoutingRule[] = [
   {
     intent: 'browser.login',
     agent: 'browser-login',
+    description: 'Login/OAuth and managed browser operations',
     keywords: ['login', 'browser', 'portal', 'cookie', 'captcha']
   },
   {
     intent: 'deploy.coolify',
     agent: 'coolify-ops',
+    description: 'Coolify service lifecycle and deployment operations',
     keywords: ['coolify', 'deploy', 'release', 'rollback', 'service up', 'service down']
   },
   {
     intent: 'research.analysis',
     agent: 'research',
+    description: 'Research, comparisons, and technical analysis',
     keywords: ['investiga', 'analiza', 'research', 'comparar', 'resumen', 'benchmark']
   }
 ];
@@ -32,4 +42,24 @@ export function actionNeedsConfirmation(text: string): boolean {
   return ['delete', 'drop', 'destroy', 'stop', 'down', 'wipe', 'rm -rf', 'shutdown'].some((token) =>
     lowered.includes(token)
   );
+}
+
+export function listAvailableAgents(): Array<{ id: string; intent: string; description: string }> {
+  const agents = new Map<string, { id: string; intent: string; description: string }>();
+
+  agents.set('main', {
+    id: 'main',
+    intent: 'general.main',
+    description: 'General coordinator and fallback'
+  });
+
+  for (const rule of ROUTING_RULES) {
+    agents.set(rule.agent, {
+      id: rule.agent,
+      intent: rule.intent,
+      description: rule.description
+    });
+  }
+
+  return Array.from(agents.values());
 }

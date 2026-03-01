@@ -3,6 +3,8 @@ services:
     image: nats:2.10-alpine
     command: ["-js", "-sd", "/data", "-m", "8222", "--user", "${NATS_USER}", "--pass", "${NATS_PASSWORD}"]
     restart: unless-stopped
+    ports:
+      - "127.0.0.1:{{ profile.nats_host_port | default(14222) }}:4222"
     volumes:
       - ./data/nats:/data
 
@@ -72,6 +74,17 @@ services:
     environment:
       METRICS_PORT: 9411
       WORKER_AGENT_ID: main
+      WORKER_EXEC_MODE: ${WORKER_EXEC_MODE}
+      OPENCLAW_BIN: ${OPENCLAW_BIN}
+      OPENCLAW_HOME: ${OPENCLAW_HOME}
+      OPENCLAW_ENV_FILE: ${OPENCLAW_ENV_FILE}
+      OPENCLAW_TIMEOUT_MS: ${OPENCLAW_TIMEOUT_MS}
+      OPENCLAW_BUNDLED_PLUGINS_DIR: ${OPENCLAW_BUNDLED_PLUGINS_DIR}
+{% if profile.worker_exec_mode | default('stub') == 'openclaw' %}
+    user: "994:994"
+    volumes:
+      - /home/openclaw:/home/openclaw
+{% endif %}
     restart: unless-stopped
     depends_on:
       - nats
@@ -87,6 +100,17 @@ services:
     environment:
       METRICS_PORT: 9412
       WORKER_AGENT_ID: research
+      WORKER_EXEC_MODE: ${WORKER_EXEC_MODE}
+      OPENCLAW_BIN: ${OPENCLAW_BIN}
+      OPENCLAW_HOME: ${OPENCLAW_HOME}
+      OPENCLAW_ENV_FILE: ${OPENCLAW_ENV_FILE}
+      OPENCLAW_TIMEOUT_MS: ${OPENCLAW_TIMEOUT_MS}
+      OPENCLAW_BUNDLED_PLUGINS_DIR: ${OPENCLAW_BUNDLED_PLUGINS_DIR}
+{% if profile.worker_exec_mode | default('stub') == 'openclaw' %}
+    user: "994:994"
+    volumes:
+      - /home/openclaw:/home/openclaw
+{% endif %}
     restart: unless-stopped
     depends_on:
       - nats
@@ -102,6 +126,20 @@ services:
     environment:
       METRICS_PORT: 9413
       WORKER_AGENT_ID: browser-login
+      NATS_URL: nats://{{ profile.nats_user | default('queue') }}:{{ profile.nats_password }}@127.0.0.1:{{ profile.nats_host_port | default(14222) }}
+      WORKER_EXEC_MODE: ${WORKER_EXEC_MODE}
+      OPENCLAW_BIN: ${OPENCLAW_BIN}
+      OPENCLAW_HOME: ${OPENCLAW_HOME}
+      OPENCLAW_ENV_FILE: ${OPENCLAW_ENV_FILE}
+      OPENCLAW_TIMEOUT_MS: ${OPENCLAW_TIMEOUT_MS}
+      OPENCLAW_BUNDLED_PLUGINS_DIR: ${OPENCLAW_BUNDLED_PLUGINS_DIR}
+{% if profile.worker_exec_mode | default('stub') == 'openclaw' %}
+    network_mode: host
+    shm_size: "1gb"
+    user: "994:994"
+    volumes:
+      - /home/openclaw:/home/openclaw
+{% endif %}
     restart: unless-stopped
     depends_on:
       - nats
@@ -117,6 +155,17 @@ services:
     environment:
       METRICS_PORT: 9414
       WORKER_AGENT_ID: coolify-ops
+      WORKER_EXEC_MODE: ${WORKER_EXEC_MODE}
+      OPENCLAW_BIN: ${OPENCLAW_BIN}
+      OPENCLAW_HOME: ${OPENCLAW_HOME}
+      OPENCLAW_ENV_FILE: ${OPENCLAW_ENV_FILE}
+      OPENCLAW_TIMEOUT_MS: ${OPENCLAW_TIMEOUT_MS}
+      OPENCLAW_BUNDLED_PLUGINS_DIR: ${OPENCLAW_BUNDLED_PLUGINS_DIR}
+{% if profile.worker_exec_mode | default('stub') == 'openclaw' %}
+    user: "994:994"
+    volumes:
+      - /home/openclaw:/home/openclaw
+{% endif %}
     restart: unless-stopped
     depends_on:
       - nats
