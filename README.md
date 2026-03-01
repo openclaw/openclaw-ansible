@@ -154,8 +154,35 @@ ansible-playbook playbook.yml --ask-become-pass
 - [Technical Details](docs/architecture.md) - Architecture overview
 - [Enterprise Deployment](docs/enterprise-deployment.md) - Multi-profile deployment
 - [Stage 2 Control Plane](docs/control-plane-stage2.md) - NATS + NestJS full/lite package
+- [Operations Workflow](docs/operations-workflow.md) - Backup/purge/install with Makefile
 - [Troubleshooting](docs/troubleshooting.md) - Common issues
 - [Agent Guidelines](AGENTS.md) - AI agent instructions
+
+## Operations Workflow (Makefile)
+
+For repeatable day-2 operations (backup, clean reinstall, smoke checks), use:
+
+```bash
+cd openclaw-ansible
+
+# Backup current state
+make backup
+
+# Purge runtime state (requires explicit confirmation)
+make purge CONFIRM=1
+
+# Reinstall enterprise + stage2 control-plane
+make install
+
+# Interactive OAuth for Codex provider
+make oauth-login PROFILES="dev-main andrea" OAUTH_PROVIDER=openai-codex
+
+# Validate full flow
+make smoke
+
+# One-shot full cycle
+make reinstall CONFIRM=1
+```
 
 ## Requirements
 
