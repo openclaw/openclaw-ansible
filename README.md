@@ -1,347 +1,271 @@
-# OpenClaw Ansible Installer
+# OpenClaw Ansible Base Protocol
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Lint](https://github.com/openclaw/openclaw-ansible/actions/workflows/lint.yml/badge.svg)](https://github.com/openclaw/openclaw-ansible/actions/workflows/lint.yml)
 [![Ansible](https://img.shields.io/badge/Ansible-2.14+-blue.svg)](https://www.ansible.com/)
 [![Multi-OS](https://img.shields.io/badge/OS-Debian%20%7C%20Ubuntu%20%7C%20Fedora-orange.svg)](https://www.debian.org/)
 
-Automated, hardened installation of [OpenClaw](https://github.com/openclaw/openclaw) with Docker and Tailscale VPN support for Debian/Ubuntu Linux.
+Base operativa en Ansible para desplegar y operar OpenClaw en modo enterprise, con perfiles múltiples, control-plane Stage 2, sincronización no interactiva de credenciales Codex y flujo de operaciones reproducible.
 
-## ⚠️ macOS Support: Deprecated & Disabled
+> Este repositorio **no es el producto OpenClaw final**.
+> Es la **capa base de infraestructura/protocolo de despliegue** para instalar, reconciliar, purgar, validar y operar entornos OpenClaw de forma consistente.
 
-**Effective 2026-02-06, support for bare-metal macOS installations has been removed from this playbook.**
+## Descripción Corta Sugerida del Repositorio
 
-### Why?
-The underlying project currently requires system-level permissions and configurations that introduce significant security risks when executed on a primary host OS. To protect user data and system integrity, we have disabled bare-metal execution.
+Si quieres actualizar la descripción en GitHub, puedes usar esta frase:
 
-### What does this mean?
-* The playbook will now explicitly fail if run on a `Darwin` (macOS) system.
-* We strongly discourage manual workarounds to bypass this check.
-* **Future Support:** We are evaluating a virtualization-first strategy (using Vagrant or Docker) to provide a sandboxed environment for this project in the future.
+`Base Ansible para OpenClaw Enterprise + Stage 2 Control Plane (NATS/NestJS), con auth-sync Codex, smoke tests y operación day-2 reproducible.`
 
-## Features
+## Qué Es y Qué No Es
 
-- 🔒 **Firewall-first**: UFW firewall + Docker isolation
-- 🛡️ **Fail2ban**: SSH brute-force protection out of the box
-- 🔄 **Auto-updates**: Automatic security patches via unattended-upgrades
-- 🔐 **Tailscale VPN**: Secure remote access without exposing services
-- 🐳 **Docker**: Docker CE with security hardening
-- 🚀 **One-command install**: Complete setup in minutes
-- 🔧 **Auto-configuration**: DBus, systemd, environment setup
-- 📦 **pnpm installation**: Uses `pnpm install -g openclaw@latest`
+### Sí es
 
-## Quick Start
+- Un blueprint de infraestructura para OpenClaw.
+- Un conjunto de roles Ansible reutilizables (`openclaw`, `openclaw_enterprise`, `openclaw_control_plane`, `openclaw_cloudflare_tunnel`).
+- Un workflow operativo con `Makefile` + `ops/*.sh` para day-0/day-1/day-2.
+- Un paquete Stage 2 full/lite para colas, enrutamiento, workers y observabilidad.
 
-### Release Mode (Recommended)
+### No es
 
-Install the latest stable version from npm:
+- Una app monolítica única de negocio.
+- Un reemplazo del repositorio principal de OpenClaw.
+- Un instalador "one-click" sin decisiones operativas: aquí se orquesta infraestructura real con perfiles, secretos y reglas de operación.
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/openclaw/openclaw-ansible/main/install.sh | bash
+## Novedades Relevantes de Esta Base
+
+- Operación estandarizada con `make backup/purge/install/auth-sync/smoke/reinstall`.
+- `auth-sync` no interactivo para Codex usando credenciales de `/home/efra/.codex`.
+- Stage 2 control-plane en dos modos:
+  - `full` (ejemplo: `efra-core`)
+  - `lite` (ejemplo: `andrea`)
+- Exposición opcional por Cloudflare Tunnel de endpoints locales.
+- Documentación de layout instalado con permisos detallados y diagramas Mermaid.
+- Endurecimientos recientes en despliegue y control-plane:
+  - `ExecStart` directo en systemd (sin wrapper shell innecesario).
+  - Healthcheck de control-api alineado con puertos host por modo (`full`/`lite`).
+  - UID/GID de workers parametrizado (sin hardcode `994:994`).
+  - `confirm/reject` ahora actualiza estado en DB (`needs_confirmation=false`).
+  - Escape seguro de contraseña en reconciliación SQL de Postgres.
+
+## Arquitectura (Vista Rápida)
+
+```mermaid
+flowchart LR
+  A[Ansible / Makefile / ops scripts] --> B[openclaw role]
+  A --> C[openclaw_enterprise role]
+  A --> D[openclaw_control_plane role]
+  A --> E[openclaw_cloudflare_tunnel role]
+
+  C --> F[Gateway profile dev-main]
+  C --> G[Gateway profile andrea]
+
+  D --> H[efra-core full]
+  D --> I[andrea lite]
+
+  H --> H1[NATS + Postgres]
+  H --> H2[Ingress + Router + Broker]
+  H --> H3[Workers main/research/browser-login/coolify-ops]
+  H --> H4[Control API + Prometheus + Grafana + Uptime Kuma]
+
+  I --> I1[NATS + Postgres]
+  I --> I2[Ingress + Router forced main + Worker main + Broker + Control API]
 ```
 
-### Development Mode
+## Flujo de Mensaje (Telegram/API -> Agente -> Resultado)
 
-Install from source for development or testing:
+```mermaid
+sequenceDiagram
+  autonumber
+  participant ING as ingress
+  participant NATS as NATS JetStream
+  participant RT as router
+  participant WK as worker-<agent>
+  participant BR as broker
+  participant PG as postgres
+  participant API as control-api
 
-```bash
-# Clone the installer
-git clone https://github.com/openclaw/openclaw-ansible.git
-cd openclaw-ansible
-
-# Install in development mode
-ansible-playbook playbook.yml --ask-become-pass -e openclaw_install_mode=development
+  ING->>NATS: publish tasks.ingress
+  RT->>NATS: consume tasks.ingress
+  RT->>NATS: publish tasks.agent.<target>
+  WK->>NATS: consume tasks.agent.<target>
+  WK->>NATS: publish results.agent.<target>
+  BR->>NATS: consume results.agent.*
+  BR->>PG: upsert tasks + insert task_events
+  API->>PG: GET /tasks, POST /tasks/:id/confirm|reject
 ```
 
-## What Gets Installed
+## Perfiles de Referencia (Inventario `dev`)
 
-- Tailscale (mesh VPN)
-- UFW firewall (SSH + Tailscale ports only)
-- Docker CE + Compose V2 (for sandboxes)
-- Node.js 22.x + pnpm
-- OpenClaw on host (not containerized)
-- Systemd service (auto-start)
+Configurados actualmente en `inventories/dev/group_vars/all.yml`:
 
-## Post-Install
+- Gateway Enterprise:
+  - `dev-main` en `127.0.0.1:19011` con agentes `main/research/browser-login/coolify-ops`.
+  - `andrea` en `127.0.0.1:19031` con agente `main`.
+- Control-plane Stage 2:
+  - `efra-core` modo `full` (`ingress=30101`, `control-api=39101`, `grafana=31001`, `prometheus=39091`).
+  - `andrea` modo `lite` (`ingress=30111`, `control-api=39111`).
 
-After installation completes, switch to the openclaw user:
+## Operación Recomendada (Day-2)
 
-```bash
-sudo su - openclaw
-```
-
-Then run the quick-start onboarding wizard:
+Desde la raíz del repo:
 
 ```bash
-openclaw onboard --install-daemon
-```
-
-This will:
-- Guide you through the setup wizard
-- Configure your messaging provider (WhatsApp/Telegram/Signal)
-- Install and start the daemon service
-
-### Alternative Manual Setup
-
-```bash
-# Configure manually
-openclaw configure
-
-# Login to provider
-openclaw providers login
-
-# Test gateway
-openclaw gateway
-
-# Install as daemon
-openclaw daemon install
-openclaw daemon start
-
-# Check status
-openclaw status
-openclaw logs
-```
-
-## Installation Modes
-
-### Release Mode (Default)
-- Installs via `pnpm install -g openclaw@latest`
-- Gets latest stable version from npm registry
-- Automatic updates via `pnpm install -g openclaw@latest`
-- **Recommended for production**
-
-### Development Mode
-- Clones from `https://github.com/openclaw/openclaw.git`
-- Builds from source with `pnpm build`
-- Symlinks binary to `~/.local/bin/openclaw`
-- Adds helpful aliases:
-  - `openclaw-rebuild` - Rebuild after code changes
-  - `openclaw-dev` - Navigate to repo directory
-  - `openclaw-pull` - Pull, install deps, and rebuild
-- **Recommended for development and testing**
-
-Enable with: `-e openclaw_install_mode=development`
-
-## Security
-
-- **Public ports**: SSH (22), Tailscale (41641/udp) only
-- **Fail2ban**: SSH brute-force protection (5 attempts → 1 hour ban)
-- **Automatic updates**: Security patches via unattended-upgrades
-- **Docker isolation**: Containers can't expose ports externally (DOCKER-USER chain)
-- **Non-root**: OpenClaw runs as unprivileged user
-- **Scoped sudo**: Limited to service management (not full root)
-- **Systemd hardening**: NoNewPrivileges, PrivateTmp, ProtectSystem
-
-Verify: `nmap -p- YOUR_SERVER_IP` should show only port 22 open.
-
-### Security Note
-
-For high-security environments, audit before running:
-
-```bash
-git clone https://github.com/openclaw/openclaw-ansible.git
-cd openclaw-ansible
-# Review playbook.yml and roles/
-ansible-playbook playbook.yml --check --diff  # Dry run
-ansible-playbook playbook.yml --ask-become-pass
-```
-
-## Documentation
-
-- [Operator Runbook](docs/operator-runbook.md) - End-to-end profile/agent/auth-sync/queue operations guide
-- [Configuration Guide](docs/configuration.md) - All configuration options
-- [Development Mode](docs/development-mode.md) - Build from source
-- [Security Architecture](docs/security.md) - Security details
-- [Technical Details](docs/architecture.md) - Architecture overview
-- [Enterprise Deployment](docs/enterprise-deployment.md) - Multi-profile deployment
-- [Stage 2 Control Plane](docs/control-plane-stage2.md) - NATS + NestJS full/lite package
-- [Cloudflare Tunnel Exposure](docs/cloudflare-tunnel.md) - Subdomain publishing for local services
-- [Operations Workflow](docs/operations-workflow.md) - Backup/purge/install with Makefile
-- [Troubleshooting](docs/troubleshooting.md) - Common issues
-- [Agent Guidelines](AGENTS.md) - AI agent instructions
-
-## Operations Workflow (Makefile)
-
-For repeatable day-2 operations (backup, clean reinstall, smoke checks), use:
-
-```bash
-cd openclaw-ansible
-
-# Backup current state
 make backup
-
-# Purge runtime state (requires explicit confirmation)
 make purge CONFIRM=1
-
-# Reinstall enterprise + stage2 control-plane
 make install
-
-# Reconcile only Cloudflare tunnel/service (if enabled in inventory)
-make cloudflare
-
-# Non-interactive Codex credential sync
 make auth-sync PROFILES="dev-main andrea" OAUTH_PROVIDER=openai-codex
-# legacy alias (same behavior)
-make oauth-login PROFILES="dev-main andrea" OAUTH_PROVIDER=openai-codex
-
-# Validate full flow
 make smoke
+```
 
-# One-shot full cycle
+Ciclo completo en una sola orden:
+
+```bash
 make reinstall CONFIRM=1
 ```
 
-## Requirements
+## Targets del Makefile
 
-- Debian 11+ or Ubuntu 20.04+ or Fedora 40+
-- Root/sudo access
-- Internet connection
+| Target | Propósito |
+|---|---|
+| `make backup` | Respalda estado conocido de OpenClaw + control-plane |
+| `make purge CONFIRM=1` | Purga estado runtime (destructivo) |
+| `make install` | Reconciliación enterprise + control-plane |
+| `make secrets-refactor` | Genera archivo manual para migrar/normalizar secretos |
+| `make cloudflare` | Reconciliación exclusiva de tunnel/cloudflared |
+| `make auth-sync` | Sincroniza credenciales Codex a perfiles/agentes |
+| `make oauth-login` | Alias legado de `make auth-sync` |
+| `make smoke` | Pruebas de salud y flujo de cola |
+| `make reinstall CONFIRM=1` | `backup + purge + install + smoke` |
 
-## What Gets Installed
+Variables principales:
 
-- Tailscale (mesh VPN)
-- UFW firewall (SSH + Tailscale ports only)
-- Docker CE + Compose V2 (for sandboxes)
-- Node.js 22.x + pnpm
-- OpenClaw on host (not containerized)
-- Systemd service (auto-start)
+- `ENV` (default `dev`)
+- `INVENTORY` (default `inventories/<env>/hosts.yml`)
+- `LIMIT` (default `zennook`)
+- `PROFILES` (default `dev-main andrea`)
+- `OAUTH_PROVIDER` (default `openai-codex`)
+- `MODEL_REF` (default `openai-codex/gpt-5.3-codex`)
 
-## Manual Installation
+## Auth Sync Codex (No Interactivo)
 
-### Release Mode (Default)
+`ops/auth-sync.sh` realiza este pipeline:
+
+1. Lee credenciales fuente (por defecto):
+   - `/home/efra/.codex/auth.json`
+   - `/home/efra/.codex/auth-andrea.json`
+2. Copia credenciales a:
+   - `/home/openclaw/.codex/auth.json`
+   - `/home/openclaw/.codex/auth-andrea.json`
+3. Escribe `auth-profiles.json` por agente en cada perfil destino.
+4. Ajusta modelo por perfil con:
+   - `openclaw --profile <perfil> models set <MODEL_REF>`
+
+Sobrescrituras opcionales (cargadas desde `/home/efra/.env` si existe):
+
+- `EFRA_CODEX_HOME`
+- `EFRA_CODEX_AUTH_DEFAULT`
+- `EFRA_CODEX_AUTH_ANDREA`
+
+## Smoke, Regresión e Idempotencia
+
+### Smoke operativo
+
+`make smoke` valida, entre otros:
+
+- Estado de stacks Docker Compose esperados.
+- Endpoints de salud (`/health`) en ingress y control-api.
+- Flujo de cola con `/ingress/simulate` hasta estado terminal en control-api.
+
+### Harness de regresión
+
+Existe harness Docker CI en `tests/run-tests.sh` con 3 fases:
+
+1. Convergencia.
+2. Verificación.
+3. Idempotencia.
+
+Estado observado en ejecución del 2026-03-01:
+
+- Convergencia: `PASS`
+- Verificación: `PASS`
+- Idempotencia: `FAIL` por 1 cambio en tarea no relacionada a control-plane (`Ensure pnpm directories have correct ownership`).
+
+## Estructura del Repositorio
+
+```text
+.
+├── playbook.yml                      # instalación base local (role openclaw)
+├── playbooks/
+│   ├── enterprise.yml                # despliegue enterprise multi-perfil
+│   └── control-plane-only.yml        # reconciliación dedicada de control-plane
+├── roles/
+│   ├── openclaw
+│   ├── openclaw_enterprise
+│   ├── openclaw_control_plane
+│   └── openclaw_cloudflare_tunnel
+├── control-plane/                    # servicios NestJS Stage 2
+├── inventories/                      # dev/staging/prod/research
+├── ops/                              # scripts operativos usados por Makefile
+├── docs/                             # runbooks, arquitectura, troubleshooting
+└── tests/                            # harness Docker de convergencia/verificación/idempotencia
+```
+
+## Seguridad y Permisos
+
+Controles principales que deja esta base:
+
+- Usuario no root para OpenClaw (`openclaw`).
+- Secretos por perfil bajo `/etc/openclaw/secrets/*.env`.
+- Servicios systemd por perfil de gateway.
+- Aislamiento de runtime con Docker para control-plane.
+- Endpoints en loopback y exposición opcional por tunnel.
+
+Para layout completo con rutas y permisos (`owner:group` + `mode`), revisa:
+
+- [Installed Runtime Layout](docs/architecture-installed-layout.md)
+
+## Sistemas Operativos Soportados
+
+- Debian
+- Ubuntu
+- Fedora
+
+### Estado de macOS
+
+La ejecución bare-metal en macOS está deshabilitada en este repo.
+El playbook falla explícitamente en `Darwin` para evitar instalación insegura fuera del modelo soportado.
+
+## Documentación Clave
+
+- [Operator Runbook](docs/operator-runbook.md)
+- [Operations Workflow](docs/operations-workflow.md)
+- [Stage 2 Control Plane](docs/control-plane-stage2.md)
+- [Enterprise Deployment](docs/enterprise-deployment.md)
+- [Installed Runtime Layout](docs/architecture-installed-layout.md)
+- [Cloudflare Tunnel](docs/cloudflare-tunnel.md)
+- [Troubleshooting](docs/troubleshooting.md)
+- [Configuration Guide](docs/configuration.md)
+- [Security Architecture](docs/security.md)
+- [Agent Guidelines](AGENTS.md)
+
+## Instalación Manual (Si No Usas Make)
 
 ```bash
-# Install dependencies
-sudo apt update && sudo apt install -y ansible git
-
-# Clone repository
-git clone https://github.com/openclaw/openclaw-ansible.git
-cd openclaw-ansible
-
-# Install Ansible collections
 ansible-galaxy collection install -r requirements.yml
-
-# Run installation
-./run-playbook.sh
+ansible-playbook -i inventories/dev/hosts.yml playbooks/enterprise.yml -l zennook --become
 ```
 
-### Development Mode
-
-Build from source for development:
+Para instalación base local mínima:
 
 ```bash
-# Same as above, but with development mode flag
-./run-playbook.sh -e openclaw_install_mode=development
-
-# Or directly:
-ansible-playbook playbook.yml --ask-become-pass -e openclaw_install_mode=development
+ansible-playbook playbook.yml --become
 ```
 
-This will:
-- Clone openclaw repo to `~/code/openclaw`
-- Run `pnpm install` and `pnpm build`
-- Symlink binary to `~/.local/bin/openclaw`
-- Add development aliases to `.bashrc`
+## Licencia
 
-## Configuration Options
+MIT. Ver [LICENSE](LICENSE).
 
-All configuration variables can be found in [`roles/openclaw/defaults/main.yml`](roles/openclaw/defaults/main.yml).
-
-You can override them in three ways:
-
-### 1. Via Command Line
-
-```bash
-ansible-playbook playbook.yml --ask-become-pass \
-  -e openclaw_install_mode=development \
-  -e "openclaw_ssh_keys=['ssh-ed25519 AAAAC3... user@host']"
-```
-
-### 2. Via Variables File
-
-```bash
-# Create vars.yml
-cat > vars.yml << EOF
-openclaw_install_mode: development
-openclaw_ssh_keys:
-  - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGxxxxxxxx user@host"
-  - "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAAB... user@host"
-openclaw_repo_url: "https://github.com/YOUR_USERNAME/openclaw.git"
-openclaw_repo_branch: "feature-branch"
-tailscale_authkey: "tskey-auth-xxxxxxxxxxxxx"
-EOF
-
-# Use it
-ansible-playbook playbook.yml --ask-become-pass -e @vars.yml
-```
-
-### 3. Edit Defaults Directly
-
-Edit `roles/openclaw/defaults/main.yml` before running the playbook.
-
-### Available Variables
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `openclaw_user` | `openclaw` | System user name |
-| `openclaw_home` | `/home/openclaw` | User home directory |
-| `openclaw_install_mode` | `release` | `release` or `development` |
-| `openclaw_ssh_keys` | `[]` | List of SSH public keys |
-| `openclaw_repo_url` | `https://github.com/openclaw/openclaw.git` | Git repository (dev mode) |
-| `openclaw_repo_branch` | `main` | Git branch (dev mode) |
-| `tailscale_authkey` | `""` | Tailscale auth key for auto-connect |
-| `nodejs_version` | `22.x` | Node.js version to install |
-
-See [`roles/openclaw/defaults/main.yml`](roles/openclaw/defaults/main.yml) for the complete list.
-
-### Common Configuration Examples
-
-#### SSH Keys for Remote Access
-
-```bash
-ansible-playbook playbook.yml --ask-become-pass \
-  -e "openclaw_ssh_keys=['ssh-ed25519 AAAAC3... user@host']"
-```
-
-#### Development Mode with Custom Repository
-
-```bash
-ansible-playbook playbook.yml --ask-become-pass \
-  -e openclaw_install_mode=development \
-  -e openclaw_repo_url=https://github.com/YOUR_USERNAME/openclaw.git \
-  -e openclaw_repo_branch=feature-branch
-```
-
-#### Tailscale Auto-Connect
-
-```bash
-ansible-playbook playbook.yml --ask-become-pass \
-  -e tailscale_authkey=tskey-auth-xxxxxxxxxxxxx
-```
-
-## License
-
-MIT - see [LICENSE](LICENSE)
-
-## Support
+## Referencias
 
 - OpenClaw: https://github.com/openclaw/openclaw
-- This installer: https://github.com/openclaw/openclaw-ansible/issues
-
-## Enterprise Multi-Environment Deployment
-
-For multi-node environments with profile isolation and model/provider routing, use:
-
-- `playbooks/enterprise.yml`
-- `inventories/dev|staging|prod|research`
-- `roles/openclaw_enterprise`
-- `run-enterprise-playbook.sh`
-
-Guide: `docs/enterprise-deployment.md`
-
-Android companion nodes are supported in this topology as gateway-paired WS nodes
-(inventory metadata group: `openclaw_mobile_nodes`; operational flow via
-`openclaw nodes pending|approve|status` on a gateway host).
-
-A dedicated `browser-login` agent is also included in enterprise profile examples:
-browser-only tool policy and `openclaw` managed browser profile for manual login flows.
+- Issues de esta base: https://github.com/openclaw/openclaw-ansible/issues
