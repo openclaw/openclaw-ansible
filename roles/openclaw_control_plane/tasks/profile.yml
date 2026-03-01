@@ -85,7 +85,7 @@
     method: GET
     status_code: 200
   register: profile_health
-  retries: 10
-  delay: 3
+  retries: "{{ openclaw_control_plane_health_retries }}"
+  delay: "{{ openclaw_control_plane_health_delay }}"
   until: profile_health is succeeded
   when: openclaw_control_plane_manage_stack | bool

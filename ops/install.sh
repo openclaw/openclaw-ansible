@@ -8,15 +8,22 @@ source "${SCRIPT_DIR}/common.sh"
 ansible_bin="$(resolve_ansible_bin)"
 inventory_file="$(resolve_inventory)"
 limit_host="$(resolve_limit)"
+inventory_dir="$(cd "$(dirname "${inventory_file}")" && pwd)"
+vault_file="${VAULT_FILE:-${inventory_dir}/group_vars/vault.yml}"
 
 need_cmd "${ansible_bin}"
 
 [[ -f "${inventory_file}" ]] || die "Inventory not found: ${inventory_file}"
 
 extra_args=()
+if [[ -f "${vault_file}" ]]; then
+  extra_args+=( -e "@${vault_file}" )
+  log "Including vault variables file: ${vault_file}"
+fi
+
 if [[ -n "${ANSIBLE_EXTRA_ARGS:-}" ]]; then
   # shellcheck disable=SC2206
-  extra_args=( ${ANSIBLE_EXTRA_ARGS} )
+  extra_args+=( ${ANSIBLE_EXTRA_ARGS} )
 fi
 
 log "Running enterprise install (inventory=${inventory_file}, limit=${limit_host})."

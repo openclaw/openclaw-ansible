@@ -10,6 +10,8 @@ openclaw_control_plane_owner: "{{ ansible_user | default('openclaw') }}"
 openclaw_control_plane_group: "{{ ansible_user | default('openclaw') }}"
 openclaw_control_plane_env_owner: "{{ openclaw_control_plane_owner }}"
 openclaw_control_plane_env_group: "{{ openclaw_control_plane_group }}"
+openclaw_control_plane_health_retries: 20
+openclaw_control_plane_health_delay: 3
 
 # Modes:
 # - full: all services (router + broker + workers + observability)

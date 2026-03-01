@@ -18,6 +18,7 @@
   loop: "{{ openclaw_control_plane_profiles }}"
   loop_control:
     loop_var: profile
+  no_log: true
 
 - name: Validate unique control-plane profile names
   ansible.builtin.assert:
@@ -38,6 +39,7 @@
   loop: "{{ openclaw_control_plane_profiles }}"
   loop_control:
     loop_var: profile
+  no_log: true
 
 - name: Ensure control-plane runtime root exists
   ansible.builtin.file:

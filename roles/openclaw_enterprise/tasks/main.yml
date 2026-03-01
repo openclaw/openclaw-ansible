@@ -16,6 +16,7 @@
   loop: "{{ openclaw_enterprise_profiles }}"
   loop_control:
     loop_var: profile
+  no_log: true
 
 - name: Validate unique enterprise profile names
   ansible.builtin.assert:
@@ -100,6 +101,7 @@
   loop: "{{ openclaw_enterprise_profiles }}"
   loop_control:
     loop_var: profile
+  no_log: true
 
 - name: Render enterprise profile config
   ansible.builtin.template:
