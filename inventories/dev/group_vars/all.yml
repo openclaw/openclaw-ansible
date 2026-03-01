@@ -37,9 +37,13 @@ openclaw_enterprise_profiles:
           profile: full
           allow:
             - browser
+      - id: coolify-ops
+        workspace: /home/openclaw/.openclaw-dev-main/workspace-coolify-ops
+        tools:
+          profile: coding
     bindings: []
     env:
-      OPENCLAW_GATEWAY_TOKEN: "{{ vault_openclaw_gateway_token_dev_main | default('tmp-dev-main-cfb2f8fdbd9144a88f1ec5a266') }}"
+      OPENCLAW_GATEWAY_TOKEN: "{{ vault_openclaw_gateway_token_dev_main | default('replace-me-dev-main-gateway-token') }}"
       OPENAI_API_KEY: "{{ vault_openai_api_key_dev | default('') }}"
       ANTHROPIC_API_KEY: "{{ vault_anthropic_api_key_dev | default('') }}"
 
@@ -61,7 +65,7 @@ openclaw_enterprise_profiles:
         workspace: /home/openclaw/.openclaw-andrea/workspace
     bindings: []
     env:
-      OPENCLAW_GATEWAY_TOKEN: "{{ vault_openclaw_gateway_token_andrea | default('tmp-andrea-7c53f22ab2e24c55bb9a2746ac') }}"
+      OPENCLAW_GATEWAY_TOKEN: "{{ vault_openclaw_gateway_token_andrea | default('replace-me-andrea-gateway-token') }}"
       OPENAI_API_KEY: "{{ vault_openai_api_key_dev | default('') }}"
       ANTHROPIC_API_KEY: "{{ vault_anthropic_api_key_dev | default('') }}"
 
@@ -80,6 +84,9 @@ openclaw_control_plane_profiles:
     uptime_kuma_port: 31081
     telegram_bot_token: "{{ vault_telegram_bot_token_efra_core | default('') }}"
     telegram_default_chat_id: "{{ vault_telegram_default_chat_id_efra_core | default('') }}"
+    worker_exec_mode: openclaw
+    openclaw_env_file: /etc/openclaw/secrets/dev-main.env
+    openclaw_gateway_token: "{{ vault_openclaw_gateway_token_dev_main | default('replace-me-dev-main-gateway-token') }}"
     postgres_password: "{{ vault_openclaw_cp_postgres_password_efra_core | default('efra-core-postgres-local') }}"
     nats_user: queue
     nats_password: "{{ vault_openclaw_cp_nats_password_efra_core | default('efra-core-nats-local') }}"

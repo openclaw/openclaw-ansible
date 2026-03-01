@@ -1,16 +1,11 @@
 ---
-# Linux-specific system tools installation (apt-based)
+# RedHat/Fedora-specific system tools installation (dnf-based)
 
-- name: Remove legacy NodeSource deb822 source file before apt operations
-  ansible.builtin.file:
-    path: /etc/apt/sources.list.d/nodesource.sources
-    state: absent
-
-- name: Install essential system tools (Linux - apt)
-  ansible.builtin.apt:
+- name: Install essential system tools (RedHat/Fedora - dnf)
+  ansible.builtin.dnf:
     name:
       # Editors
-      - vim
+      - vim-enhanced
       - nano
       # Version control
       - git
@@ -18,10 +13,10 @@
       # Network tools
       - curl
       - wget
-      - netcat-openbsd
+      - nmap-ncat
       - net-tools
-      - dnsutils
-      - iputils-ping
+      - bind-utils
+      - iputils
       - traceroute
       - tcpdump
       - nmap
@@ -35,7 +30,7 @@
       - iotop
       - iftop
       - sysstat
-      - procps
+      - procps-ng
       # System utilities
       - tmux
       - tree
@@ -44,15 +39,17 @@
       - rsync
       - less
       # Build essentials for development
-      - build-essential
+      - gcc
+      - gcc-c++
+      - make
       - file
     state: present
     update_cache: true
 
-- name: Deploy global vim configuration (Linux)
+- name: Deploy global vim configuration (RedHat/Fedora)
   ansible.builtin.template:
     src: vimrc.j2
-    dest: /etc/vim/vimrc.local
+    dest: /etc/vimrc.local
     owner: root
     group: root
     mode: '0644'

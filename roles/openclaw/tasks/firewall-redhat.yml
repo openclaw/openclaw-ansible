@@ -1,0 +1,64 @@
+---
+# RedHat/Fedora-specific firewall and security hardening (firewalld)
+
+- name: Install security packages (RedHat/Fedora)
+  ansible.builtin.dnf:
+    name:
+      - fail2ban
+      - firewalld
+      - dnf-automatic
+    state: present
+    update_cache: true
+
+- name: Configure fail2ban for SSH protection
+  ansible.builtin.copy:
+    dest: /etc/fail2ban/jail.local
+    owner: root
+    group: root
+    mode: '0644'
+    content: |
+      # OpenClaw security hardening - SSH protection
+      [DEFAULT]
+      bantime = 3600
+      findtime = 600
+      maxretry = 5
+      backend = systemd
+
+      [sshd]
+      enabled = true
+      port = ssh
+      filter = sshd
+  notify: Restart fail2ban
+
+- name: Enable and start fail2ban
+  ansible.builtin.systemd:
+    name: fail2ban
+    state: started
+    enabled: true
+
+- name: Enable and start firewalld
+  ansible.builtin.systemd:
+    name: firewalld
+    state: started
+    enabled: true
+
+- name: Allow SSH service in firewalld
+  ansible.posix.firewalld:
+    service: ssh
+    state: enabled
+    permanent: true
+    immediate: true
+
+- name: Allow Tailscale UDP port 41641 in firewalld
+  ansible.posix.firewalld:
+    port: 41641/udp
+    state: enabled
+    permanent: true
+    immediate: true
+  when: tailscale_enabled | bool
+
+- name: Enable automatic update timer (dnf-automatic)
+  ansible.builtin.systemd:
+    name: dnf-automatic.timer
+    state: started
+    enabled: true

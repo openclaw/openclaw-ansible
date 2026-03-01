@@ -112,17 +112,17 @@
   ansible.builtin.command: "id -u {{ openclaw_user }}"
   register: openclaw_uid
   changed_when: false
-  when: ansible_os_family == 'Debian' and not ci_test
+  when: ansible_system == 'Linux' and not ci_test
 
 - name: Display openclaw user ID
   ansible.builtin.debug:
     msg: "OpenClaw user ID: {{ openclaw_uid.stdout }}"
-  when: ansible_os_family == 'Debian' and not ci_test
+  when: ansible_system == 'Linux' and not ci_test
 
 - name: Enable lingering for openclaw user (allows systemd user services without login)
   ansible.builtin.command: "loginctl enable-linger {{ openclaw_user }}"
   changed_when: false
-  when: ansible_os_family == 'Debian' and not ci_test
+  when: ansible_system == 'Linux' and not ci_test
 
 - name: Create runtime directory for openclaw user
   ansible.builtin.file:
@@ -131,12 +131,12 @@
     owner: "{{ openclaw_user }}"
     group: "{{ openclaw_user }}"
     mode: '0700'
-  when: ansible_os_family == 'Debian' and not ci_test
+  when: ansible_system == 'Linux' and not ci_test
 
 - name: Store openclaw UID as fact for later use
   ansible.builtin.set_fact:
     openclaw_uid_value: "{{ openclaw_uid.stdout }}"
-  when: ansible_os_family == 'Debian' and not ci_test
+  when: ansible_system == 'Linux' and not ci_test
 
 # SSH key configuration
 - name: Create .ssh directory for openclaw user
@@ -174,7 +174,7 @@
     owner: "{{ openclaw_user }}"
     group: "{{ openclaw_user }}"
     mode: '0644'
-  when: ansible_os_family == 'Debian' and not ci_test
+  when: ansible_system == 'Linux' and not ci_test
 
 - name: Set DBUS_SESSION_BUS_ADDRESS in .bashrc for openclaw user
   ansible.builtin.blockinfile:
@@ -189,4 +189,4 @@
     owner: "{{ openclaw_user }}"
     group: "{{ openclaw_user }}"
     mode: '0644'
-  when: ansible_os_family == 'Debian' and not ci_test
+  when: ansible_system == 'Linux' and not ci_test

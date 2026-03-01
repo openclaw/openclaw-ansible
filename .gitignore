@@ -13,3 +13,12 @@ vault.yml
 id_rsa*
 host_vars/
 group_vars/
+
+# Keep inventory vars tracked (except vault secrets)
+!inventories/
+!inventories/**/
+!inventories/**/group_vars/
+!inventories/**/group_vars/*.yml
+!inventories/**/host_vars/
+!inventories/**/host_vars/.gitkeep
+inventories/**/group_vars/vault.yml

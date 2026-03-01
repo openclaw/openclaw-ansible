@@ -1,21 +1,53 @@
 ---
+- name: Validate supported OS family for openclaw role
+  ansible.builtin.assert:
+    that:
+      - ansible_os_family in ['Debian', 'RedHat']
+    fail_msg: >-
+      Unsupported OS family '{{ ansible_os_family }}' on {{ inventory_hostname }}.
+      Supported families: Debian, RedHat.
+
 - name: Include system tools installation tasks
   ansible.builtin.include_tasks: system-tools.yml
 
-- name: Include Tailscale installation tasks
+- name: Include Tailscale installation tasks (Debian/Ubuntu)
   ansible.builtin.include_tasks: tailscale-linux.yml
-  when: tailscale_enabled | bool
+  when:
+    - tailscale_enabled | bool
+    - ansible_os_family == 'Debian'
+
+- name: Include Tailscale installation tasks (RedHat/Fedora)
+  ansible.builtin.include_tasks: tailscale-redhat.yml
+  when:
+    - tailscale_enabled | bool
+    - ansible_os_family == 'RedHat'
 
 - name: Include user creation tasks
   ansible.builtin.include_tasks: user.yml
 
-- name: Include Docker installation tasks
+- name: Include Docker installation tasks (Debian/Ubuntu)
   ansible.builtin.include_tasks: docker-linux.yml
-  when: not ci_test
+  when:
+    - not ci_test
+    - ansible_os_family == 'Debian'
 
-- name: Include firewall configuration tasks
+- name: Include Docker installation tasks (RedHat/Fedora)
+  ansible.builtin.include_tasks: docker-redhat.yml
+  when:
+    - not ci_test
+    - ansible_os_family == 'RedHat'
+
+- name: Include firewall configuration tasks (Debian/Ubuntu)
   ansible.builtin.include_tasks: firewall-linux.yml
-  when: not ci_test
+  when:
+    - not ci_test
+    - ansible_os_family == 'Debian'
+
+- name: Include firewall configuration tasks (RedHat/Fedora)
+  ansible.builtin.include_tasks: firewall-redhat.yml
+  when:
+    - not ci_test
+    - ansible_os_family == 'RedHat'
 
 - name: Include Node.js installation tasks
   ansible.builtin.include_tasks: nodejs.yml

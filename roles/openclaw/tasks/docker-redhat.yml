@@ -1,0 +1,50 @@
+---
+# RedHat/Fedora-specific Docker installation (dnf-based)
+
+- name: Install required system packages for Docker (RedHat/Fedora)
+  ansible.builtin.dnf:
+    name:
+      - dnf-plugins-core
+      - ca-certificates
+      - curl
+    state: present
+    update_cache: true
+
+- name: Add Docker repository (RedHat/Fedora)
+  ansible.builtin.get_url:
+    url: "https://download.docker.com/linux/fedora/docker-ce.repo"
+    dest: /etc/yum.repos.d/docker-ce.repo
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Install Docker CE (RedHat/Fedora)
+  ansible.builtin.dnf:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-buildx-plugin
+      - docker-compose-plugin
+    state: present
+    update_cache: true
+
+- name: Ensure docker group exists
+  ansible.builtin.group:
+    name: docker
+    state: present
+
+- name: Ensure Docker service is started and enabled
+  ansible.builtin.systemd:
+    name: docker
+    state: started
+    enabled: true
+
+- name: Add user to docker group
+  ansible.builtin.user:
+    name: "{{ openclaw_user }}"
+    groups: docker
+    append: true
+
+- name: Reset SSH connection to apply docker group
+  ansible.builtin.meta: reset_connection

@@ -138,3 +138,59 @@ ansible-playbook playbook.yml --ask-become-pass
 sudo systemctl start docker
 # Re-run playbook
 ```
+
+## Gateway Unreachable After Tailscale Exposure Change (dev-main)
+
+**Symptom**:
+- `openclaw --profile dev-main status --all` shows gateway unreachable (`ECONNREFUSED 127.0.0.1:18789`)
+- `gateway probe` may show `Connect: ok` but `RPC: failed - timeout`
+- Mixed state after switching to `gateway.bind=tailnet` or enabling internal `gateway.tailscale.mode=serve`
+
+**Root cause**:
+- Local profile clients still target loopback (`ws://127.0.0.1:18789`) while gateway binding/exposure was changed.
+- Residual `tailscale ssh`/forward processes can remain attached to the service cgroup.
+- Internal Tailscale serve from non-interactive service users may fail depending on tailnet policy.
+
+**Remediation (safe baseline)**:
+```bash
+# 1) Keep gateway local-only
+sudo -iu openclaw /home/openclaw/.local/bin/openclaw --profile dev-main config set gateway.bind loopback
+sudo -iu openclaw /home/openclaw/.local/bin/openclaw --profile dev-main config set gateway.tailscale.mode off
+
+# 2) Restart user service using openclaw user DBus
+uid=$(id -u openclaw)
+export XDG_RUNTIME_DIR=/run/user/$uid
+export DBUS_SESSION_BUS_ADDRESS=unix:path=$XDG_RUNTIME_DIR/bus
+sudo -u openclaw XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR DBUS_SESSION_BUS_ADDRESS=$DBUS_SESSION_BUS_ADDRESS \
+  systemctl --user restart openclaw-gateway-dev-main.service
+sudo -u openclaw XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR DBUS_SESSION_BUS_ADDRESS=$DBUS_SESSION_BUS_ADDRESS \
+  systemctl --user enable openclaw-gateway-dev-main.service
+
+# 3) Validate
+sudo -iu openclaw /home/openclaw/.local/bin/openclaw --profile dev-main gateway probe
+sudo -iu openclaw /home/openclaw/.local/bin/openclaw --profile dev-main status --all
+```
+
+**Expected healthy probe**:
+- `Local loopback ws://127.0.0.1:18789`
+- `Connect: ok`
+- `RPC: ok`
+
+**Expose dashboard over Tailscale (recommended pattern)**:
+- Keep OpenClaw bind on loopback.
+- Expose separately with Tailscale Serve (HTTPS path), only if Serve is enabled in tailnet admin:
+```bash
+sudo tailscale serve --bg http://127.0.0.1:18789
+tailscale serve status
+```
+
+**Security follow-up**:
+- If a token appeared in process command lines (`OPENCLAW_GATEWAY_TOKEN=...`), rotate it immediately:
+```bash
+sudo -iu openclaw /home/openclaw/.local/bin/openclaw --profile dev-main doctor --generate-gateway-token
+uid=$(id -u openclaw)
+export XDG_RUNTIME_DIR=/run/user/$uid
+export DBUS_SESSION_BUS_ADDRESS=unix:path=$XDG_RUNTIME_DIR/bus
+sudo -u openclaw XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR DBUS_SESSION_BUS_ADDRESS=$DBUS_SESSION_BUS_ADDRESS \
+  systemctl --user restart openclaw-gateway-dev-main.service
+```

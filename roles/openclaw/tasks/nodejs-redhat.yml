@@ -1,0 +1,49 @@
+---
+- name: Install required packages for Node.js (RedHat/Fedora)
+  ansible.builtin.dnf:
+    name:
+      - ca-certificates
+      - curl
+      - gnupg2
+    state: present
+    update_cache: true
+
+- name: Add NodeSource repository (RedHat/Fedora)
+  ansible.builtin.shell:
+    cmd: |
+      set -o pipefail
+      curl -fsSL https://rpm.nodesource.com/setup_{{ nodejs_version }} | bash -
+    creates: /etc/yum.repos.d/nodesource-nodejs.repo
+    executable: /bin/bash
+
+- name: Install Node.js (RedHat/Fedora)
+  ansible.builtin.dnf:
+    name: nodejs
+    state: present
+    update_cache: true
+
+- name: Check if pnpm is already installed
+  ansible.builtin.command: pnpm --version
+  register: pnpm_check
+  failed_when: false
+  changed_when: false
+
+- name: Install pnpm globally
+  ansible.builtin.command: npm install -g pnpm
+  when: pnpm_check.rc != 0
+
+- name: Verify Node.js installation
+  ansible.builtin.command: node --version
+  register: node_version
+  changed_when: false
+
+- name: Verify pnpm installation
+  ansible.builtin.command: pnpm --version
+  register: pnpm_version
+  changed_when: false
+
+- name: Display Node.js and pnpm versions
+  ansible.builtin.debug:
+    msg:
+      - "Node.js version: {{ node_version.stdout }}"
+      - "pnpm version: {{ pnpm_version.stdout }}"

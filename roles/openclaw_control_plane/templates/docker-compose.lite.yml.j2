@@ -58,6 +58,17 @@ services:
     environment:
       METRICS_PORT: 9411
       WORKER_AGENT_ID: main
+      WORKER_EXEC_MODE: ${WORKER_EXEC_MODE}
+      OPENCLAW_BIN: ${OPENCLAW_BIN}
+      OPENCLAW_HOME: ${OPENCLAW_HOME}
+      OPENCLAW_ENV_FILE: ${OPENCLAW_ENV_FILE}
+      OPENCLAW_TIMEOUT_MS: ${OPENCLAW_TIMEOUT_MS}
+      OPENCLAW_BUNDLED_PLUGINS_DIR: ${OPENCLAW_BUNDLED_PLUGINS_DIR}
+{% if profile.worker_exec_mode | default('stub') == 'openclaw' %}
+    user: "994:994"
+    volumes:
+      - /home/openclaw:/home/openclaw
+{% endif %}
     restart: unless-stopped
     depends_on:
       - nats
