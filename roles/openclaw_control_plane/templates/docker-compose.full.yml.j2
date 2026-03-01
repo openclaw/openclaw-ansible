@@ -81,7 +81,7 @@ services:
       OPENCLAW_TIMEOUT_MS: ${OPENCLAW_TIMEOUT_MS}
       OPENCLAW_BUNDLED_PLUGINS_DIR: ${OPENCLAW_BUNDLED_PLUGINS_DIR}
 {% if profile.worker_exec_mode | default('stub') == 'openclaw' %}
-    user: "994:994"
+    user: "${OPENCLAW_UID}:${OPENCLAW_GID}"
     volumes:
       - /home/openclaw:/home/openclaw
 {% endif %}
@@ -107,7 +107,7 @@ services:
       OPENCLAW_TIMEOUT_MS: ${OPENCLAW_TIMEOUT_MS}
       OPENCLAW_BUNDLED_PLUGINS_DIR: ${OPENCLAW_BUNDLED_PLUGINS_DIR}
 {% if profile.worker_exec_mode | default('stub') == 'openclaw' %}
-    user: "994:994"
+    user: "${OPENCLAW_UID}:${OPENCLAW_GID}"
     volumes:
       - /home/openclaw:/home/openclaw
 {% endif %}
@@ -136,7 +136,7 @@ services:
 {% if profile.worker_exec_mode | default('stub') == 'openclaw' %}
     network_mode: host
     shm_size: "1gb"
-    user: "994:994"
+    user: "${OPENCLAW_UID}:${OPENCLAW_GID}"
     volumes:
       - /home/openclaw:/home/openclaw
 {% endif %}
@@ -162,7 +162,7 @@ services:
       OPENCLAW_TIMEOUT_MS: ${OPENCLAW_TIMEOUT_MS}
       OPENCLAW_BUNDLED_PLUGINS_DIR: ${OPENCLAW_BUNDLED_PLUGINS_DIR}
 {% if profile.worker_exec_mode | default('stub') == 'openclaw' %}
-    user: "994:994"
+    user: "${OPENCLAW_UID}:${OPENCLAW_GID}"
     volumes:
       - /home/openclaw:/home/openclaw
 {% endif %}

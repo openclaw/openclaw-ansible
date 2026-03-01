@@ -61,6 +61,25 @@ export class ControlService implements OnModuleInit, OnModuleDestroy {
       createdAt: new Date().toISOString()
     };
 
+    const nextStatus = decision === 'confirm' ? 'DONE' : 'FAILED';
+
+    const updated = await this.pg?.query(
+      `
+      UPDATE tasks
+      SET status = $1,
+          needs_confirmation = FALSE,
+          updated_at = NOW()
+      WHERE task_id = $2
+        AND profile = $3
+        AND needs_confirmation = TRUE
+      `,
+      [nextStatus, taskId, this.cfg.profile]
+    );
+
+    if ((updated?.rowCount ?? 0) === 0) {
+      this.logger.warn(`Decision ${decision} for task ${taskId} did not match a pending confirmation row`);
+    }
+
     this.nc?.publish(`control.${decision}.${this.cfg.profile}`, encodeJson(command));
 
     await this.pg?.query(
@@ -68,7 +87,7 @@ export class ControlService implements OnModuleInit, OnModuleDestroy {
       INSERT INTO task_events (task_id, profile, event_type, from_agent, payload)
       VALUES ($1, $2, $3, $4, $5::jsonb)
       `,
-      [taskId, this.cfg.profile, `decision_${decision}`, actor, JSON.stringify(command)]
+      [taskId, this.cfg.profile, `decision_${decision}`, actor, JSON.stringify({ ...command, status: nextStatus })]
     );
   }
 

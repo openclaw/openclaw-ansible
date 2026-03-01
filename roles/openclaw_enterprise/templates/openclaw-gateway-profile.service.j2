@@ -16,7 +16,7 @@ Environment="PATH={{ openclaw_home }}/.local/bin:{{ openclaw_home }}/.local/shar
 Environment="HOME={{ openclaw_home }}"
 Environment="XDG_RUNTIME_DIR=/run/user/{{ openclaw_uid_value | default('1000') }}"
 
-ExecStart=/bin/sh {{ openclaw_enterprise_openclaw_bin }} --profile {{ profile.name }} gateway --bind {{ profile.gateway_bind | default('loopback') }} --port {{ profile.gateway_port }}
+ExecStart={{ openclaw_enterprise_openclaw_bin }} --profile {{ profile.name }} gateway --bind {{ profile.gateway_bind | default('loopback') }} --port {{ profile.gateway_port }}
 Restart=always
 RestartSec=5
 NoNewPrivileges=true

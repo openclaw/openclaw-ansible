@@ -81,10 +81,13 @@
 
 - name: Wait for profile postgres container to accept local connections
   ansible.builtin.shell: |
-    docker exec {{ openclaw_control_plane_project_prefix }}-{{ profile.name }}-postgres-1 \
-      sh -lc "export PGPASSWORD='{{ profile.postgres_admin_password | default(profile.postgres_password) }}'; \
-      psql -h 127.0.0.1 -U {{ profile.postgres_admin_user | default(profile.postgres_user | default('openclaw')) }} \
-      -d {{ profile.postgres_db | default('openclaw_control') }} -tAc 'select 1'"
+    docker exec \
+      -e PGPASSWORD='{{ profile.postgres_admin_password | default(profile.postgres_password) | replace("'", "'\"'\"'") }}' \
+      {{ openclaw_control_plane_project_prefix }}-{{ profile.name }}-postgres-1 \
+      psql -h 127.0.0.1 \
+      -U {{ profile.postgres_admin_user | default(profile.postgres_user | default('openclaw')) }} \
+      -d {{ profile.postgres_db | default('openclaw_control') }} \
+      -tAc 'select 1'
   register: profile_postgres_ready
   retries: 30
   delay: 2
@@ -96,27 +99,30 @@
 
 - name: Reconcile postgres role password for control-plane profile
   ansible.builtin.shell: |
-    docker exec {{ openclaw_control_plane_project_prefix }}-{{ profile.name }}-postgres-1 \
-      sh -lc "export PGPASSWORD='{{ profile.postgres_admin_password | default(profile.postgres_password) }}'; \
-      psql -h 127.0.0.1 -U {{ profile.postgres_admin_user | default(profile.postgres_user | default('openclaw')) }} \
-      -d {{ profile.postgres_db | default('openclaw_control') }} -v ON_ERROR_STOP=1 <<'SQL'
+    docker exec -i \
+      -e PGPASSWORD='{{ profile.postgres_admin_password | default(profile.postgres_password) | replace("'", "'\"'\"'") }}' \
+      {{ openclaw_control_plane_project_prefix }}-{{ profile.name }}-postgres-1 \
+      psql -h 127.0.0.1 \
+      -U {{ profile.postgres_admin_user | default(profile.postgres_user | default('openclaw')) }} \
+      -d {{ profile.postgres_db | default('openclaw_control') }} \
+      -v ON_ERROR_STOP=1 <<'SQL'
     DO \$\$
     BEGIN
       IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '{{ profile.postgres_user | default('openclaw') }}') THEN
-        CREATE ROLE {{ profile.postgres_user | default('openclaw') }} LOGIN PASSWORD '{{ profile.postgres_password }}';
+        CREATE ROLE {{ profile.postgres_user | default('openclaw') }} LOGIN PASSWORD '{{ profile.postgres_password | replace("'", "''") }}';
       ELSE
-        ALTER ROLE {{ profile.postgres_user | default('openclaw') }} WITH LOGIN PASSWORD '{{ profile.postgres_password }}';
+        ALTER ROLE {{ profile.postgres_user | default('openclaw') }} WITH LOGIN PASSWORD '{{ profile.postgres_password | replace("'", "''") }}';
       END IF;
     END
     \$\$;
-    SQL"
+    SQL
   register: profile_postgres_reconcile
   changed_when: false
   when: openclaw_control_plane_manage_stack | bool
 
 - name: Probe control API health
   ansible.builtin.uri:
-    url: "http://127.0.0.1:{{ profile.control_api_port | default(39090) }}/health"
+    url: "http://127.0.0.1:{{ profile.control_api_port | default((profile.mode == 'lite') | ternary(39111, 39101)) }}/health"
     method: GET
     status_code: 200
   register: profile_health
