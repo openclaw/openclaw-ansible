@@ -43,24 +43,24 @@
   ansible.builtin.file:
     path: "{{ openclaw_control_plane_runtime_root }}"
     state: directory
-    owner: "{{ openclaw_user }}"
-    group: "{{ openclaw_user }}"
+    owner: "{{ openclaw_control_plane_owner }}"
+    group: "{{ openclaw_control_plane_group }}"
     mode: '0755'
 
 - name: Ensure control-plane source directory exists on target
   ansible.builtin.file:
     path: "{{ openclaw_control_plane_runtime_root }}/source"
     state: directory
-    owner: "{{ openclaw_user }}"
-    group: "{{ openclaw_user }}"
+    owner: "{{ openclaw_control_plane_owner }}"
+    group: "{{ openclaw_control_plane_group }}"
     mode: '0755'
 
 - name: Sync control-plane source to target
   ansible.builtin.copy:
     src: "{{ openclaw_control_plane_source_dir }}/"
     dest: "{{ openclaw_control_plane_runtime_root }}/source/"
-    owner: "{{ openclaw_user }}"
-    group: "{{ openclaw_user }}"
+    owner: "{{ openclaw_control_plane_owner }}"
+    group: "{{ openclaw_control_plane_group }}"
     mode: preserve
 
 - name: Configure and deploy each control-plane profile

@@ -6,6 +6,10 @@ openclaw_control_plane_runtime_root: /opt/openclaw/control-plane
 openclaw_control_plane_source_dir: "{{ playbook_dir }}/../control-plane"
 openclaw_control_plane_project_prefix: ocp
 openclaw_control_plane_default_nats_stream: OPENCLAW_TASKS
+openclaw_control_plane_owner: "{{ ansible_user | default('openclaw') }}"
+openclaw_control_plane_group: "{{ ansible_user | default('openclaw') }}"
+openclaw_control_plane_env_owner: "{{ openclaw_control_plane_owner }}"
+openclaw_control_plane_env_group: "{{ openclaw_control_plane_group }}"
 
 # Modes:
 # - full: all services (router + broker + workers + observability)

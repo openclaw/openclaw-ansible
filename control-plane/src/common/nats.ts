@@ -1,9 +1,43 @@
-import { StringCodec, connect, type Consumer, type NatsConnection } from 'nats';
+import {
+  AckPolicy,
+  type ConnectionOptions,
+  DeliverPolicy,
+  ReplayPolicy,
+  RetentionPolicy,
+  StringCodec,
+  connect,
+  type Consumer,
+  type NatsConnection
+} from 'nats';
 
 const sc = StringCodec();
 
 export async function connectNats(servers: string): Promise<NatsConnection> {
-  return connect({ servers: servers.split(',').map((v) => v.trim()) });
+  const options: ConnectionOptions = {
+    servers: []
+  };
+
+  options.servers = servers
+    .split(',')
+    .map((v) => v.trim())
+    .filter((v) => v.length > 0)
+    .map((raw) => {
+      const url = new URL(raw.includes('://') ? raw : `nats://${raw}`);
+
+      if (url.username && options.user === undefined) {
+        options.user = decodeURIComponent(url.username);
+      }
+      if (url.password && options.pass === undefined) {
+        options.pass = decodeURIComponent(url.password);
+      }
+
+      url.username = '';
+      url.password = '';
+
+      return `${url.protocol}//${url.host}`;
+    });
+
+  return connect(options);
 }
 
 export async function ensureStream(nc: NatsConnection, streamName: string): Promise<void> {
@@ -15,7 +49,7 @@ export async function ensureStream(nc: NatsConnection, streamName: string): Prom
     await jsm.streams.add({
       name: streamName,
       subjects: ['tasks.>', 'results.>', 'control.>'],
-      retention: 'limits',
+      retention: RetentionPolicy.Limits,
       max_age: 7 * 24 * 60 * 60 * 1_000_000_000
     });
   }
@@ -34,11 +68,11 @@ export async function ensureConsumer(
   } catch {
     await jsm.consumers.add(streamName, {
       durable_name: durableName,
-      ack_policy: 'explicit',
-      deliver_policy: 'all',
+      ack_policy: AckPolicy.Explicit,
+      deliver_policy: DeliverPolicy.All,
       filter_subject: filterSubject,
       max_ack_pending: 200,
-      replay_policy: 'instant'
+      replay_policy: ReplayPolicy.Instant
     });
   }
 

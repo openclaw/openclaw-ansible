@@ -148,8 +148,10 @@ services:
 
   prometheus:
     image: prom/prometheus:v2.54.1
+    user: "0:0"
     command:
       - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./data/prometheus:/prometheus
@@ -163,6 +165,7 @@ services:
 
   grafana:
     image: grafana/grafana:11.2.2
+    user: "0:0"
     environment:
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
     volumes:

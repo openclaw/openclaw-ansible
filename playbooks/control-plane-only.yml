@@ -1,0 +1,9 @@
+---
+- name: Deploy only OpenClaw control-plane stacks
+  hosts: openclaw_gateway
+  become: false
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+  roles:
+    - role: openclaw_control_plane
+      when: openclaw_control_plane_enabled | bool

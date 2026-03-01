@@ -7,16 +7,16 @@
   ansible.builtin.file:
     path: "{{ openclaw_control_plane_profile_dir }}"
     state: directory
-    owner: "{{ openclaw_user }}"
-    group: "{{ openclaw_user }}"
+    owner: "{{ openclaw_control_plane_owner }}"
+    group: "{{ openclaw_control_plane_group }}"
     mode: '0755'
 
 - name: Ensure profile project directories exist
   ansible.builtin.file:
     path: "{{ openclaw_control_plane_profile_dir }}/{{ item }}"
     state: directory
-    owner: "{{ openclaw_user }}"
-    group: "{{ openclaw_user }}"
+    owner: "{{ openclaw_control_plane_owner }}"
+    group: "{{ openclaw_control_plane_group }}"
     mode: '0755'
   loop:
     - data
@@ -29,8 +29,8 @@
   ansible.builtin.template:
     src: control-plane.env.j2
     dest: "{{ openclaw_control_plane_profile_dir }}/.env"
-    owner: root
-    group: "{{ openclaw_user }}"
+    owner: "{{ openclaw_control_plane_env_owner }}"
+    group: "{{ openclaw_control_plane_env_group }}"
     mode: '0640'
   no_log: true
 
@@ -38,8 +38,8 @@
   ansible.builtin.template:
     src: docker-compose.full.yml.j2
     dest: "{{ openclaw_control_plane_profile_dir }}/docker-compose.yml"
-    owner: "{{ openclaw_user }}"
-    group: "{{ openclaw_user }}"
+    owner: "{{ openclaw_control_plane_owner }}"
+    group: "{{ openclaw_control_plane_group }}"
     mode: '0644'
   when: profile.mode == 'full'
 
@@ -47,8 +47,8 @@
   ansible.builtin.template:
     src: docker-compose.lite.yml.j2
     dest: "{{ openclaw_control_plane_profile_dir }}/docker-compose.yml"
-    owner: "{{ openclaw_user }}"
-    group: "{{ openclaw_user }}"
+    owner: "{{ openclaw_control_plane_owner }}"
+    group: "{{ openclaw_control_plane_group }}"
     mode: '0644'
   when: profile.mode == 'lite'
 
@@ -56,16 +56,16 @@
   ansible.builtin.template:
     src: prometheus.yml.j2
     dest: "{{ openclaw_control_plane_profile_dir }}/prometheus/prometheus.yml"
-    owner: "{{ openclaw_user }}"
-    group: "{{ openclaw_user }}"
+    owner: "{{ openclaw_control_plane_owner }}"
+    group: "{{ openclaw_control_plane_group }}"
     mode: '0644'
 
 - name: Render Grafana datasource provisioning
   ansible.builtin.template:
     src: grafana-datasources.yml.j2
     dest: "{{ openclaw_control_plane_profile_dir }}/grafana/provisioning/datasources/datasource.yml"
-    owner: "{{ openclaw_user }}"
-    group: "{{ openclaw_user }}"
+    owner: "{{ openclaw_control_plane_owner }}"
+    group: "{{ openclaw_control_plane_group }}"
     mode: '0644'
 
 - name: Deploy control-plane stack with Docker Compose

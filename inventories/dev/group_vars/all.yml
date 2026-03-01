@@ -72,7 +72,7 @@ openclaw_control_plane_profiles:
   - name: efra-core
     mode: full
     gateway_profile: dev-main
-    project_dir: /opt/openclaw/control-plane/efra-core
+    project_dir: /home/efra/openclaw-control-plane/efra-core
     ingress_port: 30101
     control_api_port: 39101
     grafana_port: 31001
@@ -80,18 +80,18 @@ openclaw_control_plane_profiles:
     uptime_kuma_port: 31081
     telegram_bot_token: "{{ vault_telegram_bot_token_efra_core | default('') }}"
     telegram_default_chat_id: "{{ vault_telegram_default_chat_id_efra_core | default('') }}"
-    postgres_password: "{{ vault_openclaw_cp_postgres_password_efra_core | default('') }}"
+    postgres_password: "{{ vault_openclaw_cp_postgres_password_efra_core | default('efra-core-postgres-local') }}"
     nats_user: queue
-    nats_password: "{{ vault_openclaw_cp_nats_password_efra_core | default('') }}"
+    nats_password: "{{ vault_openclaw_cp_nats_password_efra_core | default('efra-core-nats-local') }}"
 
   - name: andrea
     mode: lite
     gateway_profile: andrea
-    project_dir: /opt/openclaw/control-plane/andrea
+    project_dir: /home/efra/openclaw-control-plane/andrea
     ingress_port: 30111
     control_api_port: 39111
     telegram_bot_token: "{{ vault_telegram_bot_token_andrea | default('') }}"
     telegram_default_chat_id: "{{ vault_telegram_default_chat_id_andrea | default('') }}"
-    postgres_password: "{{ vault_openclaw_cp_postgres_password_andrea | default('') }}"
+    postgres_password: "{{ vault_openclaw_cp_postgres_password_andrea | default('andrea-postgres-local') }}"
     nats_user: queue
-    nats_password: "{{ vault_openclaw_cp_nats_password_andrea | default('') }}"
+    nats_password: "{{ vault_openclaw_cp_nats_password_andrea | default('andrea-nats-local') }}"
