@@ -1,92 +1,79 @@
 ---
-title: Operations Workflow (Backup, Purge, Install)
-summary: Makefile-driven clean install/uninstall cycle for OpenClaw + Stage 2 control-plane
+title: Operations Workflow (ClawOps Suite)
+summary: Protocolo day-2 para operar OpenClaw enterprise de manera repetible.
 ---
 
 # Operations Workflow
 
-This repository provides a Makefile interface over `ops/*.sh` scripts:
+## Idea Central
 
-- `make backup`
-- `make purge CONFIRM=1`
-- `make install`
-- `make secrets-refactor`
-- `make cloudflare`
-- `make auth-sync`
-- `make smoke`
-- `make reinstall CONFIRM=1`
+La suite define un protocolo simple: cada operación crítica debe tener un comando único y repetible.
 
-## Why this split
+Por eso `Makefile` expone comandos estables y `ops/*.sh` encapsula la implementación.
 
-- `Makefile`: stable operator commands.
-- `ops/*.sh`: implementation details, safe to extend.
-
-## Auth sync (Codex)
-
-Credential sync is now non-interactive and uses Codex auth files from the `efra` user.
-
-Use:
+## Ciclo Canónico
 
 ```bash
+make backup
+make purge CONFIRM=1
+make install
 make auth-sync PROFILES="dev-main andrea" OAUTH_PROVIDER=openai-codex
-# legacy alias (same behavior)
-make oauth-login PROFILES="dev-main andrea" OAUTH_PROVIDER=openai-codex
+make smoke
 ```
 
-Optional environment overrides (loaded from `/home/efra/.env` when present):
-
-- `EFRA_CODEX_HOME` (default: `/home/efra/.codex`)
-- `EFRA_CODEX_AUTH_DEFAULT` (default: `/home/efra/.codex/auth.json`)
-- `EFRA_CODEX_AUTH_ANDREA` (default: `/home/efra/.codex/auth-andrea.json`)
-
-The sync process:
-
-- copies auth files to `/home/openclaw/.codex/`
-- writes `openai-codex` OAuth profiles into each target profile's `auth-profiles.json`
-- sets profile default model to `openai-codex/gpt-5.3-codex` (configurable with `MODEL_REF`)
-
-Runtime command environment still auto-loads `/etc/openclaw/secrets/<profile>.env` and exports:
-
-- `HOME=/home/openclaw`
-- `OPENCLAW_BUNDLED_PLUGINS_DIR=/home/openclaw/.openclaw/bundled-extensions`
-
-## Manual secrets refactor
-
-Before a clean install, generate and review a manual migration file:
+Para ejecución completa:
 
 ```bash
-make secrets-refactor ENV=dev LIMIT=zennook
+make reinstall CONFIRM=1
 ```
 
-This creates:
+## Comandos y Rol Operativo
 
-- `inventories/dev/group_vars/vault.manual.refactor.yml`
+- `make backup`: preserva estado operativo antes de cambios.
+- `make purge`: limpia estado runtime para reinstalación controlada.
+- `make install`: reconcilia enterprise + control-plane.
+- `make auth-sync`: propaga credenciales Codex a perfiles/agentes.
+- `make smoke`: valida salud + flujo cola end-to-end.
 
-Then:
+## Auth-Sync como Control de Deriva
+
+`auth-sync` existe para resolver una falencia operativa común: credenciales divergentes por agente/perfil.
+
+Estrategia:
+
+1. Fuente central en `/home/efra/.codex`.
+2. Espejo en `/home/openclaw/.codex`.
+3. Escritura determinista de `auth-profiles.json` por agente.
+4. Alineación de modelo por perfil.
+
+## Validación de Secretos
+
+`make install` ejecuta validación previa de secretos para bloquear despliegues incompletos.
+
+Complemento:
 
 ```bash
-# review and merge into vault.yml
-./ops/validate-secrets.sh
+make secrets-refactor
 ```
 
-`make install` now runs `./ops/validate-secrets.sh` first and aborts if required keys are
-missing or still using placeholder values.
+Genera base de migración manual para homogeneizar vault por ambiente.
 
-Cloudflare reconcile (subdomain exposure only):
+## Qué Falencias Cubre Este Workflow
 
-```bash
-make cloudflare ENV=dev LIMIT=zennook
-```
+1. Cambios manuales no auditables.
+2. Reinstalaciones inconsistentes.
+3. Pérdida de estado por no hacer backup previo.
+4. Despliegues "verdes" sin smoke real de cola.
 
-## Defaults
+## Defaults de Operación
 
 - `ENV=dev`
 - `INVENTORY=inventories/dev/hosts.yml`
 - `LIMIT=zennook`
 - `PROFILES="dev-main andrea"`
 
-Override per command, for example:
+## Referencias
 
-```bash
-make install ENV=staging LIMIT=fedora
-```
+- [Operator Runbook](operator-runbook.md)
+- [Enterprise Deployment](enterprise-deployment.md)
+- [Installed Runtime Layout](architecture-installed-layout.md)

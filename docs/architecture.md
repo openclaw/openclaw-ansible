@@ -1,132 +1,104 @@
 ---
-title: Architecture
-description: Technical implementation details
+title: ClawOps Suite Architecture
+summary: Arquitectura técnica de la suite operativa sobre OpenClaw (roles, flujos, capas y controles).
 ---
 
-# Architecture
+# ClawOps Suite Architecture
 
-## Component Overview
+## Objetivo Arquitectónico
 
-```
-┌─────────────────────────────────────────┐
-│ UFW Firewall (SSH only)                 │
-└──────────────┬──────────────────────────┘
-               │
-┌──────────────┴──────────────────────────┐
-│ DOCKER-USER Chain (iptables)            │
-│ Blocks all external container access    │
-└──────────────┬──────────────────────────┘
-               │
-┌──────────────┴──────────────────────────┐
-│ Docker Daemon                            │
-│ - Non-root containers                    │
-│ - Localhost-only binding                 │
-└──────────────┬──────────────────────────┘
-               │
-┌──────────────┴──────────────────────────┐
-│ OpenClaw Container                       │
-│ User: openclaw                           │
-│ Port: 127.0.0.1:3000                     │
-└──────────────────────────────────────────┘
-```
+Separar claramente tres capas:
 
-## File Structure
+1. Capa producto (OpenClaw runtime).
+2. Capa plataforma (Ansible roles/playbooks).
+3. Capa operación (Makefile + `ops/*.sh` + smoke/runbooks).
 
-```
-/opt/openclaw/
-├── Dockerfile
-├── docker-compose.yml
+Esta separación permite operación reproducible y control de drift en entornos reales.
 
-/home/openclaw/.openclaw/
-├── config.yml
-├── sessions/
-└── credentials/
+## Mapa de Componentes
 
-/etc/systemd/system/
-└── openclaw.service
+```mermaid
+flowchart TB
+  subgraph OPS[Operation Layer]
+    MK[Makefile]
+    SH[ops/*.sh]
+    SM[smoke + backup/purge/install]
+  end
 
-/etc/docker/
-└── daemon.json
+  subgraph IA[Infrastructure as Code Layer]
+    PB[playbooks/enterprise.yml]
+    R1[role openclaw]
+    R2[role openclaw_enterprise]
+    R3[role openclaw_control_plane]
+    R4[role openclaw_cloudflare_tunnel]
+  end
 
-/etc/ufw/
-└── after.rules (DOCKER-USER chain)
+  subgraph RT[Runtime Layer]
+    GW[Gateway profiles]
+    CP[Stage 2 Control Plane]
+    CF[Cloudflare tunnel opcional]
+  end
+
+  MK --> SH --> PB
+  PB --> R1
+  PB --> R2
+  PB --> R3
+  PB --> R4
+
+  R2 --> GW
+  R3 --> CP
+  R4 --> CF
 ```
 
-## Service Management
+## Stage 2 Runtime (Full/Lite)
 
-OpenClaw runs as a systemd service that manages the Docker container:
+```mermaid
+flowchart LR
+  IN[ingress] --> N[(NATS JetStream)]
+  RT[router] --> N
+  W[worker-*] --> N
+  B[broker] --> N
+  B --> P[(Postgres)]
+  A[control-api] --> P
 
-```bash
-# Systemd controls Docker Compose
-systemd → docker compose → openclaw container
+  O[observability full mode]:::obs
+  O --> PR[prometheus]
+  O --> GR[grafana]
+  O --> UK[uptime-kuma]
+
+  classDef obs fill:#eef,stroke:#99c,stroke-width:1px;
 ```
 
-## Installation Flow
+## Falencias Cubiertas por Diseño
 
-1. **Tailscale Setup** (`tailscale.yml`)
-   - Add Tailscale repository
-   - Install Tailscale package
-   - Display connection instructions
+| Falencia operativa | Respuesta en la suite |
+|---|---|
+| Instalación no repetible | Playbooks + defaults + inventarios por ambiente |
+| Drift entre perfiles/agentes | Perfiles declarativos + reconciliación Ansible |
+| Sin control de cola/estado | NATS + broker + control-api + PostgreSQL |
+| Confirmaciones sin transición persistida | `control-api` actualiza estado y eventos en DB |
+| Credenciales manuales por agente | `auth-sync` no interactivo por perfil/agente |
+| Day-2 artesanal | Targets `make` estandarizados |
 
-2. **User Creation** (`user.yml`)
-   - Create `openclaw` system user
+## Seguridad Operativa
 
-3. **Docker Installation** (`docker.yml`)
-   - Install Docker CE + Compose V2
-   - Add user to docker group
-   - Create `/etc/docker` directory
+- Secrets por perfil en `/etc/openclaw/secrets/*.env`.
+- Servicios con aislamiento de usuario/perfil.
+- Endpoints internos en loopback (publicación externa opcional por tunnel).
+- Workers con UID/GID parametrizados para evitar supuestos rígidos de host.
 
-4. **Firewall Setup** (`firewall.yml`)
-   - Install UFW
-   - Configure DOCKER-USER chain
-   - Configure Docker daemon (`/etc/docker/daemon.json`)
-   - Allow SSH (22/tcp) and Tailscale (41641/udp)
+## Rutas Críticas
 
-5. **Node.js Installation** (`nodejs.yml`)
-   - Add NodeSource repository
-   - Install Node.js 22.x
-   - Install pnpm globally
+- Playbook enterprise: `playbooks/enterprise.yml`
+- Roles: `roles/openclaw*`
+- Control-plane source: `control-plane/`
+- Inventarios: `inventories/*`
+- Operación: `ops/*`, `Makefile`
 
-6. **OpenClaw Setup** (`openclaw.yml`)
-   - Create directories
-   - Generate configs from templates
-   - Build Docker image
-   - Start container via Compose
-   - Install systemd service
+## Decisión de Compatibilidad
 
-## Key Design Decisions
+macOS bare-metal se considera fuera del modelo de ejecución seguro/soportado para esta suite.
 
-### Why UFW + DOCKER-USER?
+## Relación con OpenClaw
 
-Docker manipulates iptables directly, bypassing UFW. The DOCKER-USER chain is evaluated before Docker's FORWARD chain, allowing us to block traffic before Docker sees it.
-
-### Why Localhost Binding?
-
-Defense in depth. Even if DOCKER-USER fails, localhost binding prevents external access.
-
-### Why Systemd Service?
-
-- Auto-start on boot
-- Clean lifecycle management
-- Integration with system logs
-- Dependency management (after Docker)
-
-### Why Non-Root Container?
-
-Principle of least privilege. If container is compromised, attacker has limited privileges.
-
-## Ansible Task Order
-
-```
-main.yml
-├── tailscale.yml (VPN setup)
-├── user.yml (create openclaw user)
-├── docker.yml (install Docker, create /etc/docker)
-├── firewall.yml (configure UFW + Docker daemon)
-├── nodejs.yml (Node.js + pnpm)
-└── openclaw.yml (container setup)
-```
-
-Order matters: Docker must be installed before firewall configuration because:
-1. `/etc/docker` directory must exist for `daemon.json`
-2. Docker service must exist to be restarted after config changes
+Esta suite es una capa de protocolo y operación sobre OpenClaw; no reemplaza el producto.

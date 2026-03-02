@@ -1,32 +1,70 @@
-# OpenClaw Control Plane (Stage 2)
+# ClawOps Stage 2 Control Plane
 
-NestJS microservices + NATS JetStream control plane for multi-agent routing:
+Control-plane de la suite operativa: microservicios NestJS + NATS JetStream para ruteo multi-agente, persistencia de estados y control de ejecución.
 
-- `ingress`: receives Telegram/API payloads and emits `tasks.ingress`
-- `router`: classifies intent and routes to `tasks.agent.<agent>`
-- `worker`: executes per agent and emits `results.agent.<agent>`
-- `broker`: persists results and optionally replies to Telegram
-- `control-api`: task state, queue stats, confirm/reject actions
+## Servicios
 
-## Run locally
+- `ingress`: recibe tráfico Telegram/API y publica `tasks.ingress`.
+- `router`: clasifica y enruta a `tasks.agent.<agent>`.
+- `worker`: consume por agente y publica `results.agent.<agent>`.
+- `broker`: persiste resultados/eventos y puede responder a Telegram.
+- `control-api`: consulta tareas, cola y decisiones (`confirm/reject`).
+
+## Qué Falencia Resuelve
+
+1. Falta de bus/eventos para tareas multi-agente.
+2. Falta de estado persistente de ejecución.
+3. Falta de API de control para operaciones y confirmaciones.
+4. Falta de trazabilidad de eventos por tarea.
+
+## Contrato de Mensajes
+
+### Task envelope
+
+- `taskId`
+- `profile`
+- `source.channel/chatId/userId`
+- `text`
+- `intent`
+- `targetAgent`
+- `status`
+
+### Result envelope
+
+- `taskId`
+- `profile`
+- `fromAgent`
+- `status`
+- `summary`
+- `fullResponse`
+- `needsConfirmation`
+
+## Ejecución Local
 
 ```bash
-npm install
-npm run build
-npm run start:ingress
-npm run start:router
-npm run start:worker
-npm run start:broker
-npm run start:control-api
+pnpm install
+pnpm run build
+pnpm run start:ingress
+pnpm run start:router
+pnpm run start:worker
+pnpm run start:broker
+pnpm run start:control-api
 ```
 
-Environment variables:
+## Variables de Entorno Relevantes
 
 - `OPENCLAW_PROFILE`
 - `NATS_URL`
 - `NATS_STREAM`
 - `POSTGRES_URL`
-- `TELEGRAM_BOT_TOKEN` (optional)
-- `TELEGRAM_DEFAULT_CHAT_ID` (optional)
-- `ROUTER_FORCED_AGENT` (optional)
-- `WORKER_AGENT_ID` (for worker service)
+- `WORKER_AGENT_ID`
+- `WORKER_EXEC_MODE`
+- `OPENCLAW_BIN`
+- `OPENCLAW_HOME`
+- `OPENCLAW_ENV_FILE`
+- `OPENCLAW_UID`
+- `OPENCLAW_GID`
+
+## Nota
+
+Este paquete se instala y reconcilia desde Ansible (`role: openclaw_control_plane`) y forma parte de la ClawOps Protocol Suite.

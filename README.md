@@ -1,113 +1,96 @@
-# OpenClaw Ansible Base Protocol
+# ClawOps Protocol Suite (Ansible Base)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Lint](https://github.com/openclaw/openclaw-ansible/actions/workflows/lint.yml/badge.svg)](https://github.com/openclaw/openclaw-ansible/actions/workflows/lint.yml)
 [![Ansible](https://img.shields.io/badge/Ansible-2.14+-blue.svg)](https://www.ansible.com/)
 [![Multi-OS](https://img.shields.io/badge/OS-Debian%20%7C%20Ubuntu%20%7C%20Fedora-orange.svg)](https://www.debian.org/)
 
-Base operativa en Ansible para desplegar y operar OpenClaw en modo enterprise, con perfiles múltiples, control-plane Stage 2, sincronización no interactiva de credenciales Codex y flujo de operaciones reproducible.
+Suite operativa para llevar OpenClaw a un estándar de despliegue enterprise: perfiles múltiples, colas Stage 2, auth-sync centralizado, smoke tests y protocolos day-2 reproducibles.
 
-> Este repositorio **no es el producto OpenClaw final**.
-> Es la **capa base de infraestructura/protocolo de despliegue** para instalar, reconciliar, purgar, validar y operar entornos OpenClaw de forma consistente.
+## Por Qué Nace Esta Suite
 
-## Descripción Corta Sugerida del Repositorio
+Nace para resolver un problema operativo concreto: OpenClaw funciona como producto, pero en entornos reales faltaba una capa robusta de infraestructura y protocolo para operar múltiples perfiles y agentes de forma repetible.
 
-Si quieres actualizar la descripción en GitHub, puedes usar esta frase:
+Esta suite aparece para cerrar la brecha entre:
 
-`Base Ansible para OpenClaw Enterprise + Stage 2 Control Plane (NATS/NestJS), con auth-sync Codex, smoke tests y operación day-2 reproducible.`
+- "funciona en una máquina" y "opera estable en equipos/ambientes".
+- "instalación manual" y "ciclo completo backup-purge-install-smoke".
+- "credenciales dispersas" y "auth-sync controlado por perfil/agente".
+- "ejecución sin trazabilidad" y "observabilidad/control con API y eventos".
+
+## Falencias Que Cubre (Frente a Uso Base de OpenClaw)
+
+1. Falta de protocolo multi-perfil/multi-agente: se añade `openclaw_enterprise` y servicios por perfil.
+2. Falta de orquestación de colas y control central: se añade Stage 2 (`ingress/router/worker/broker/control-api`) con NATS+Postgres.
+3. Falta de sincronización de credenciales a escala: se añade `make auth-sync` con escritura de `auth-profiles.json` por agente.
+4. Falta de operación day-2 unificada: se estandariza `make backup/purge/install/smoke/reinstall`.
+5. Falta de validación post-despliegue: se añade smoke de salud + flujo de cola terminal.
+6. Falta de visibilidad en full mode: se integra Prometheus/Grafana/Uptime Kuma.
 
 ## Qué Es y Qué No Es
 
-### Sí es
+### Qué es
 
-- Un blueprint de infraestructura para OpenClaw.
-- Un conjunto de roles Ansible reutilizables (`openclaw`, `openclaw_enterprise`, `openclaw_control_plane`, `openclaw_cloudflare_tunnel`).
-- Un workflow operativo con `Makefile` + `ops/*.sh` para day-0/day-1/day-2.
-- Un paquete Stage 2 full/lite para colas, enrutamiento, workers y observabilidad.
+- Base Ansible de despliegue y operación (protocolo operativo).
+- Suite de automatización para OpenClaw en escenarios enterprise.
+- Capa de estandarización para equipos DevOps/Platform.
 
-### No es
+### Qué no es
 
-- Una app monolítica única de negocio.
-- Un reemplazo del repositorio principal de OpenClaw.
-- Un instalador "one-click" sin decisiones operativas: aquí se orquesta infraestructura real con perfiles, secretos y reglas de operación.
+- No reemplaza el repositorio principal de OpenClaw.
+- No es una reescritura del core de OpenClaw.
+- No es un instalador "one-click" opaco; es infraestructura explícita y auditable.
 
-## Novedades Relevantes de Esta Base
+## Identidad de la Suite
 
-- Operación estandarizada con `make backup/purge/install/auth-sync/smoke/reinstall`.
-- `auth-sync` no interactivo para Codex usando credenciales de `/home/efra/.codex`.
-- Stage 2 control-plane en dos modos:
-  - `full` (ejemplo: `efra-core`)
-  - `lite` (ejemplo: `andrea`)
-- Exposición opcional por Cloudflare Tunnel de endpoints locales.
-- Documentación de layout instalado con permisos detallados y diagramas Mermaid.
-- Endurecimientos recientes en despliegue y control-plane:
-  - `ExecStart` directo en systemd (sin wrapper shell innecesario).
-  - Healthcheck de control-api alineado con puertos host por modo (`full`/`lite`).
-  - UID/GID de workers parametrizado (sin hardcode `994:994`).
-  - `confirm/reject` ahora actualiza estado en DB (`needs_confirmation=false`).
-  - Escape seguro de contraseña en reconciliación SQL de Postgres.
+Nombre operativo recomendado: `ClawOps Protocol Suite`.
 
-## Arquitectura (Vista Rápida)
+Descripción corta recomendada para GitHub:
+
+`Suite Ansible para operación enterprise de OpenClaw con Stage 2 Control Plane (NATS/NestJS), auth-sync Codex, smoke tests y ciclo day-2 reproducible.`
+
+## Arquitectura Rápida
 
 ```mermaid
 flowchart LR
-  A[Ansible / Makefile / ops scripts] --> B[openclaw role]
-  A --> C[openclaw_enterprise role]
-  A --> D[openclaw_control_plane role]
-  A --> E[openclaw_cloudflare_tunnel role]
+  A[Makefile + ops scripts] --> B[playbooks enterprise/control-plane]
+  B --> C[role: openclaw]
+  B --> D[role: openclaw_enterprise]
+  B --> E[role: openclaw_control_plane]
+  B --> F[role: openclaw_cloudflare_tunnel]
 
-  C --> F[Gateway profile dev-main]
-  C --> G[Gateway profile andrea]
+  D --> G[Gateway profiles]
+  E --> H[Stage 2 full/lite]
+  F --> I[Cloudflare loopback exposure opcional]
 
-  D --> H[efra-core full]
-  D --> I[andrea lite]
-
-  H --> H1[NATS + Postgres]
-  H --> H2[Ingress + Router + Broker]
-  H --> H3[Workers main/research/browser-login/coolify-ops]
-  H --> H4[Control API + Prometheus + Grafana + Uptime Kuma]
-
-  I --> I1[NATS + Postgres]
-  I --> I2[Ingress + Router forced main + Worker main + Broker + Control API]
+  H --> H1[NATS JetStream]
+  H --> H2[Postgres]
+  H --> H3[Ingress/Router/Workers/Broker]
+  H --> H4[Control API]
+  H --> H5[Prom/Grafana/Kuma full mode]
 ```
 
-## Flujo de Mensaje (Telegram/API -> Agente -> Resultado)
+## Flujo Mensajería/Cola
 
 ```mermaid
 sequenceDiagram
   autonumber
   participant ING as ingress
-  participant NATS as NATS JetStream
   participant RT as router
+  participant NATS as NATS
   participant WK as worker-<agent>
   participant BR as broker
   participant PG as postgres
   participant API as control-api
 
-  ING->>NATS: publish tasks.ingress
-  RT->>NATS: consume tasks.ingress
-  RT->>NATS: publish tasks.agent.<target>
-  WK->>NATS: consume tasks.agent.<target>
-  WK->>NATS: publish results.agent.<target>
-  BR->>NATS: consume results.agent.*
-  BR->>PG: upsert tasks + insert task_events
-  API->>PG: GET /tasks, POST /tasks/:id/confirm|reject
+  ING->>NATS: tasks.ingress
+  RT->>NATS: tasks.agent.<target>
+  WK->>NATS: results.agent.<target>
+  BR->>PG: upsert tasks + task_events
+  API->>PG: consulta + confirm/reject
 ```
 
-## Perfiles de Referencia (Inventario `dev`)
-
-Configurados actualmente en `inventories/dev/group_vars/all.yml`:
-
-- Gateway Enterprise:
-  - `dev-main` en `127.0.0.1:19011` con agentes `main/research/browser-login/coolify-ops`.
-  - `andrea` en `127.0.0.1:19031` con agente `main`.
-- Control-plane Stage 2:
-  - `efra-core` modo `full` (`ingress=30101`, `control-api=39101`, `grafana=31001`, `prometheus=39091`).
-  - `andrea` modo `lite` (`ingress=30111`, `control-api=39111`).
-
-## Operación Recomendada (Day-2)
-
-Desde la raíz del repo:
+## Operación Recomendada
 
 ```bash
 make backup
@@ -117,155 +100,97 @@ make auth-sync PROFILES="dev-main andrea" OAUTH_PROVIDER=openai-codex
 make smoke
 ```
 
-Ciclo completo en una sola orden:
+Ciclo completo:
 
 ```bash
 make reinstall CONFIRM=1
 ```
 
-## Targets del Makefile
+## Targets Operativos
 
 | Target | Propósito |
 |---|---|
-| `make backup` | Respalda estado conocido de OpenClaw + control-plane |
-| `make purge CONFIRM=1` | Purga estado runtime (destructivo) |
+| `make backup` | Respaldo de estado conocido |
+| `make purge CONFIRM=1` | Purga runtime (destructivo) |
 | `make install` | Reconciliación enterprise + control-plane |
-| `make secrets-refactor` | Genera archivo manual para migrar/normalizar secretos |
-| `make cloudflare` | Reconciliación exclusiva de tunnel/cloudflared |
-| `make auth-sync` | Sincroniza credenciales Codex a perfiles/agentes |
-| `make oauth-login` | Alias legado de `make auth-sync` |
-| `make smoke` | Pruebas de salud y flujo de cola |
-| `make reinstall CONFIRM=1` | `backup + purge + install + smoke` |
+| `make secrets-refactor` | Genera base de migración de secretos |
+| `make cloudflare` | Reconciliación exclusiva del túnel |
+| `make auth-sync` | Sincroniza credenciales Codex por perfil/agente |
+| `make oauth-login` | Alias legado de auth-sync |
+| `make smoke` | Prueba de salud + flujo de cola |
+| `make reinstall CONFIRM=1` | Ciclo end-to-end |
 
-Variables principales:
+Variables clave:
 
-- `ENV` (default `dev`)
-- `INVENTORY` (default `inventories/<env>/hosts.yml`)
-- `LIMIT` (default `zennook`)
-- `PROFILES` (default `dev-main andrea`)
-- `OAUTH_PROVIDER` (default `openai-codex`)
-- `MODEL_REF` (default `openai-codex/gpt-5.3-codex`)
+- `ENV`
+- `INVENTORY`
+- `LIMIT`
+- `PROFILES`
+- `OAUTH_PROVIDER`
+- `MODEL_REF`
 
-## Auth Sync Codex (No Interactivo)
+## Auth-Sync No Interactivo
 
-`ops/auth-sync.sh` realiza este pipeline:
+`ops/auth-sync.sh`:
 
-1. Lee credenciales fuente (por defecto):
-   - `/home/efra/.codex/auth.json`
-   - `/home/efra/.codex/auth-andrea.json`
-2. Copia credenciales a:
-   - `/home/openclaw/.codex/auth.json`
-   - `/home/openclaw/.codex/auth-andrea.json`
-3. Escribe `auth-profiles.json` por agente en cada perfil destino.
-4. Ajusta modelo por perfil con:
-   - `openclaw --profile <perfil> models set <MODEL_REF>`
+1. Lee credenciales fuente (por defecto `/home/efra/.codex/*`).
+2. Copia credenciales a `/home/openclaw/.codex`.
+3. Escribe `auth-profiles.json` por agente en perfiles destino.
+4. Fija modelo por perfil con `openclaw --profile <name> models set <MODEL_REF>`.
 
-Sobrescrituras opcionales (cargadas desde `/home/efra/.env` si existe):
+Overrides vía `/home/efra/.env`:
 
 - `EFRA_CODEX_HOME`
 - `EFRA_CODEX_AUTH_DEFAULT`
 - `EFRA_CODEX_AUTH_ANDREA`
 
-## Smoke, Regresión e Idempotencia
+## Pruebas y Calidad Operativa
 
-### Smoke operativo
+- `make smoke`: salud ingress/control-api + simulación de cola hasta estado terminal.
+- `tests/run-tests.sh`: convergencia/verificación/idempotencia en harness Docker.
+- `ansible-playbook --syntax-check`: validación de sintaxis de playbooks.
 
-`make smoke` valida, entre otros:
-
-- Estado de stacks Docker Compose esperados.
-- Endpoints de salud (`/health`) en ingress y control-api.
-- Flujo de cola con `/ingress/simulate` hasta estado terminal en control-api.
-
-### Harness de regresión
-
-Existe harness Docker CI en `tests/run-tests.sh` con 3 fases:
-
-1. Convergencia.
-2. Verificación.
-3. Idempotencia.
-
-Estado observado en ejecución del 2026-03-01:
-
-- Convergencia: `PASS`
-- Verificación: `PASS`
-- Idempotencia: `FAIL` por 1 cambio en tarea no relacionada a control-plane (`Ensure pnpm directories have correct ownership`).
-
-## Estructura del Repositorio
+## Estructura del Repo
 
 ```text
 .
-├── playbook.yml                      # instalación base local (role openclaw)
+├── playbook.yml
 ├── playbooks/
-│   ├── enterprise.yml                # despliegue enterprise multi-perfil
-│   └── control-plane-only.yml        # reconciliación dedicada de control-plane
 ├── roles/
-│   ├── openclaw
-│   ├── openclaw_enterprise
-│   ├── openclaw_control_plane
-│   └── openclaw_cloudflare_tunnel
-├── control-plane/                    # servicios NestJS Stage 2
-├── inventories/                      # dev/staging/prod/research
-├── ops/                              # scripts operativos usados por Makefile
-├── docs/                             # runbooks, arquitectura, troubleshooting
-└── tests/                            # harness Docker de convergencia/verificación/idempotencia
+├── control-plane/
+├── inventories/
+├── ops/
+├── docs/
+└── tests/
 ```
 
-## Seguridad y Permisos
+## Nota Legal Importante (MIT)
 
-Controles principales que deja esta base:
+Sí se puede modificar gran parte del repositorio, documentación y branding.
 
-- Usuario no root para OpenClaw (`openclaw`).
-- Secretos por perfil bajo `/etc/openclaw/secrets/*.env`.
-- Servicios systemd por perfil de gateway.
-- Aislamiento de runtime con Docker para control-plane.
-- Endpoints en loopback y exposición opcional por tunnel.
+Pero **no** se debe eliminar el cumplimiento de licencia MIT en copias sustanciales del software. En la práctica, eso implica mantener los avisos de licencia/copyright aplicables en los artefactos distribuidos.
 
-Para layout completo con rutas y permisos (`owner:group` + `mode`), revisa:
+Por eso, se puede crear identidad propia de suite, pero no borrar obligaciones legales de atribución/licencia.
 
-- [Installed Runtime Layout](docs/architecture-installed-layout.md)
-
-## Sistemas Operativos Soportados
+## Compatibilidad y SO
 
 - Debian
 - Ubuntu
 - Fedora
 
-### Estado de macOS
+macOS bare-metal está bloqueado en este repo por política de seguridad operativa.
 
-La ejecución bare-metal en macOS está deshabilitada en este repo.
-El playbook falla explícitamente en `Darwin` para evitar instalación insegura fuera del modelo soportado.
+## Documentación Principal
 
-## Documentación Clave
-
-- [Operator Runbook](docs/operator-runbook.md)
-- [Operations Workflow](docs/operations-workflow.md)
-- [Stage 2 Control Plane](docs/control-plane-stage2.md)
+- [Architecture](docs/architecture.md)
 - [Enterprise Deployment](docs/enterprise-deployment.md)
+- [Operations Workflow](docs/operations-workflow.md)
+- [Operator Runbook](docs/operator-runbook.md)
+- [Stage 2 Control Plane](docs/control-plane-stage2.md)
 - [Installed Runtime Layout](docs/architecture-installed-layout.md)
 - [Cloudflare Tunnel](docs/cloudflare-tunnel.md)
 - [Troubleshooting](docs/troubleshooting.md)
-- [Configuration Guide](docs/configuration.md)
-- [Security Architecture](docs/security.md)
-- [Agent Guidelines](AGENTS.md)
-
-## Instalación Manual (Si No Usas Make)
-
-```bash
-ansible-galaxy collection install -r requirements.yml
-ansible-playbook -i inventories/dev/hosts.yml playbooks/enterprise.yml -l zennook --become
-```
-
-Para instalación base local mínima:
-
-```bash
-ansible-playbook playbook.yml --become
-```
 
 ## Licencia
 
 MIT. Ver [LICENSE](LICENSE).
-
-## Referencias
-
-- OpenClaw: https://github.com/openclaw/openclaw
-- Issues de esta base: https://github.com/openclaw/openclaw-ansible/issues

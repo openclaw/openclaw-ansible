@@ -1,90 +1,60 @@
 ---
-title: Stage 2 Control Plane (NATS + NestJS)
-summary: Full/lite queue orchestration package installable per profile
+title: Stage 2 Control Plane (ClawOps Suite)
+summary: Capa de orquestación de cola/estado para operación multi-agente en OpenClaw enterprise.
 ---
 
 # Stage 2 Control Plane
 
-This repository now includes a reusable Stage 2 package for queue orchestration and telemetry.
+## Contexto
 
-## Modes
+Stage 2 es la respuesta a una necesidad operativa: cuando hay múltiples agentes y perfiles, hace falta un plano de control explícito para enrutar, persistir, observar y decidir.
 
-- `full` (`efra-core`): complete stack
-  - NATS JetStream
-  - PostgreSQL state store
-  - NestJS services: `ingress`, `router`, `broker`, `worker-main`, `worker-research`, `worker-browser-login`, `worker-coolify-ops`, `control-api`
-  - Observability: Prometheus + Grafana + Uptime Kuma
-- `lite` (`andrea`): minimal direct worker path
-  - NATS JetStream
-  - PostgreSQL state store
-  - NestJS services: `ingress`, `router` (forced to `main`), `worker-main`, `broker`, `control-api`
+## Modos
 
-## Intent Routing
+- `full`:
+  - NATS + Postgres
+  - ingress/router/broker/control-api
+  - workers múltiples
+  - observabilidad (Prometheus/Grafana/Uptime Kuma)
+- `lite`:
+  - NATS + Postgres
+  - ingress/router-forced-main/worker-main/broker/control-api
 
-Ingress receives Telegram/API messages and publishes `tasks.ingress`.
-Router classifies intent and emits `tasks.agent.<agent>`.
-Workers consume per-agent queues and emit `results.agent.<agent>`.
-Broker persists outputs and can send Telegram replies.
+## Flujo Operativo
 
-Ingress also supports a direct Telegram command:
+1. `ingress` publica tarea.
+2. `router` decide destino.
+3. `worker` ejecuta.
+4. `broker` persiste y publica salida.
+5. `control-api` consulta estados y aplica decisiones.
 
-- `/agents` (or `/agents@<bot>`) to list available agents and intent mappings without queueing a task.
-
-## Contract
-
-Task envelope fields:
-- `taskId`
-- `profile`
-- `source.channel/chatId/userId`
-- `text`
-- `intent`
-- `targetAgent`
-- `status`
-
-Result envelope fields:
-- `taskId`
-- `fromAgent`
-- `status`
-- `summary`
-- `fullResponse`
-- `needsConfirmation`
-
-## Deployment
-
-Enabled through `playbooks/enterprise.yml` with role `openclaw_control_plane`.
-
-Inventory variables (`inventories/<env>/group_vars/all.yml`):
-- `openclaw_control_plane_enabled`
-- `openclaw_control_plane_profiles`
-
-Secrets (`inventories/<env>/group_vars/vault.yml`):
-- `vault_openclaw_cp_postgres_password_*`
-- `vault_openclaw_cp_nats_password_*`
-- `vault_telegram_bot_token_*`
-- `vault_telegram_default_chat_id_*`
-
-## Operational Endpoints
+## Endpoints Principales
 
 - Ingress: `http://127.0.0.1:<ingress_port>/telegram/webhook`
+- Simulación: `http://127.0.0.1:<ingress_port>/ingress/simulate`
 - Control API: `http://127.0.0.1:<control_api_port>/tasks`
-- Queue stats: `http://127.0.0.1:<control_api_port>/queues`
-- Grafana (`full` only): `http://127.0.0.1:<grafana_port>`
-- Prometheus (`full` only): `http://127.0.0.1:<prometheus_port>`
+- Cola: `http://127.0.0.1:<control_api_port>/queues`
 
-You can publish these loopback endpoints through Cloudflare Tunnel subdomains by enabling
-`openclaw_cloudflare_tunnel_*` variables in inventory (see `docs/cloudflare-tunnel.md`).
+## Endurecimientos Incluidos
 
-## Packaging for other profiles
+- Health probe con defaults coherentes por modo (`full`/`lite`).
+- UID/GID de worker parametrizado (`OPENCLAW_UID/OPENCLAW_GID`).
+- Confirm/reject con transición real de estado en DB.
+- Reconciliación SQL de password con escaping seguro.
 
-To install this package on another profile, add one object to `openclaw_control_plane_profiles`.
-No code changes are required, only profile variables and secrets.
+## Integración con la Suite
 
-## Browser worker networking (full mode)
+Se habilita vía `openclaw_control_plane_enabled` y perfiles en inventario.
 
-For browser-driven flows (`browser-login`) the full stack template uses:
+Despliegue recomendado:
 
-- `network_mode: host`
-- `shm_size: "1gb"`
-- worker-local `NATS_URL` override to `127.0.0.1:<nats_host_port>`
+```bash
+make install
+make smoke
+```
 
-This keeps queue consumption stable while allowing browser-related operations to reach host-local gateway/browser relay paths.
+## Referencias
+
+- [Operator Runbook](operator-runbook.md)
+- [Operations Workflow](operations-workflow.md)
+- [Architecture](architecture.md)
