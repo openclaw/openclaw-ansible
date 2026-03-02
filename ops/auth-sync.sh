@@ -92,6 +92,14 @@ function ensureDir(dirPath, uid, gid) {
   fs.chownSync(dirPath, uid, gid);
 }
 
+function ensureProfileSkeleton(profileDir, uid, gid) {
+  // Recursive mkdir can leave intermediate directories owned by root.
+  // Ensure profile roots are writable by openclaw before model configuration.
+  ensureDir(profileDir, uid, gid);
+  ensureDir(path.join(profileDir, "agents"), uid, gid);
+  ensureDir(path.join(profileDir, "agents", "main"), uid, gid);
+}
+
 function loadStore(storePath) {
   try {
     const parsed = JSON.parse(fs.readFileSync(storePath, "utf8"));
@@ -186,6 +194,7 @@ let stores = 0;
 for (const profile of profiles) {
   const profileDir = resolveProfileDir(profile);
   const selected = profile === "andrea" ? andreaCred : defaultCred;
+  ensureProfileSkeleton(profileDir, uid, gid);
   const agentDirs = collectAgentDirs(profileDir);
 
   for (const agentDir of agentDirs) {

@@ -44,14 +44,14 @@
     - "{{ openclaw_home }}/.local/share/pnpm/store"
     - "{{ openclaw_home }}/.local/bin"
 
-- name: Ensure pnpm directories have correct ownership
+- name: Ensure pnpm directory tree ownership is correct
   ansible.builtin.file:
     path: "{{ openclaw_home }}/.local/share/pnpm"
     state: directory
     owner: "{{ openclaw_user }}"
     group: "{{ openclaw_user }}"
     recurse: true
-    mode: '0755'
+  when: not (ci_test | default(false) | bool)
 
 - name: Configure pnpm for openclaw user
   ansible.builtin.shell:

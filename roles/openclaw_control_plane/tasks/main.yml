@@ -41,6 +41,22 @@
     loop_var: profile
   no_log: true
 
+- name: Resolve runtime UID/GID for openclaw worker user
+  ansible.builtin.getent:
+    database: passwd
+    key: "{{ openclaw_user | default('openclaw') }}"
+
+- name: Set effective control-plane worker UID/GID from system account
+  ansible.builtin.set_fact:
+    openclaw_control_plane_worker_uid: >-
+      {{
+        ansible_facts.getent_passwd[openclaw_user | default('openclaw')][1]
+      }}
+    openclaw_control_plane_worker_gid: >-
+      {{
+        ansible_facts.getent_passwd[openclaw_user | default('openclaw')][2]
+      }}
+
 - name: Ensure control-plane runtime root exists
   ansible.builtin.file:
     path: "{{ openclaw_control_plane_runtime_root }}"
