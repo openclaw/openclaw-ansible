@@ -83,6 +83,28 @@
     msg: "Build failed - dist directory not found"
   when: not dist_dir.stat.exists
 
+- name: Resolve openclaw CLI entrypoint path
+  ansible.builtin.shell:
+    cmd: |
+      set -euo pipefail
+      for rel in openclaw.mjs bin/openclaw.js dist/index.js; do
+        if [ -f "{{ openclaw_repo_dir }}/$rel" ]; then
+          printf '%s\n' "{{ openclaw_repo_dir }}/$rel"
+          exit 0
+        fi
+      done
+      exit 1
+    executable: /bin/bash
+  register: openclaw_cli_entry
+  changed_when: false
+
+- name: Fail if openclaw CLI entrypoint is missing
+  ansible.builtin.fail:
+    msg: >-
+      Unable to locate OpenClaw CLI entrypoint in {{ openclaw_repo_dir }}.
+      Expected one of: openclaw.mjs, bin/openclaw.js, dist/index.js
+  when: (openclaw_cli_entry.stdout | trim) == ""
+
 - name: Remove existing global openclaw symlink (if any)
   ansible.builtin.file:
     path: "{{ openclaw_home }}/.local/bin/openclaw"
@@ -90,7 +112,7 @@
 
 - name: Create symlink to openclaw binary
   ansible.builtin.file:
-    src: "{{ openclaw_repo_dir }}/bin/openclaw.js"
+    src: "{{ openclaw_cli_entry.stdout | trim }}"
     dest: "{{ openclaw_home }}/.local/bin/openclaw"
     state: link
     owner: "{{ openclaw_user }}"
@@ -99,7 +121,7 @@
 
 - name: Make openclaw binary executable
   ansible.builtin.file:
-    path: "{{ openclaw_repo_dir }}/bin/openclaw.js"
+    path: "{{ openclaw_cli_entry.stdout | trim }}"
     mode: '0755'
     owner: "{{ openclaw_user }}"
     group: "{{ openclaw_user }}"
@@ -122,7 +144,7 @@
     msg: |
       OpenClaw installed from source: {{ openclaw_dev_version.stdout }}
       Repository: {{ openclaw_repo_dir }}
-      Binary: {{ openclaw_home }}/.local/bin/openclaw -> {{ openclaw_repo_dir }}/bin/openclaw.js
+      Binary: {{ openclaw_home }}/.local/bin/openclaw -> {{ openclaw_cli_entry.stdout | trim }}
 
 - name: Add development mode info to .bashrc
   ansible.builtin.blockinfile:
