@@ -1,40 +1,15 @@
-# macOS
-.DS_Store
-.AppleDouble
-.LSOverride
+*.retry
+*.log
+.ansible/
+.vault_pass
 
-# Xcode
-xcuserdata/
-*.xcodeproj/xcuserdata/
-*.xcworkspace/xcuserdata/
-*.xcworkspace/contents.xcworkspacedata
-DerivedData/
-*.hmap
-*.ipa
-*.dSYM.zip
-*.dSYM
-*.xcscmblueprint
-*.xccheckout
-
-# Build output
-build/
-
-# Swift Package Manager
-.build/
-.swiftpm/
-Package.resolved
-
-# Terraform
-.terraform
-.terraform.lock.hcl
-.terragrunt-cache
-*.tfstate
-*.tfstate.*
-
-# Editors
-.vscode/
-*.swp
-*.swo
-
-# Claude Code
-.claude/
+# Secrets and credentials
+*.env
+.env*
+secrets.yml
+vault.yml
+*.pem
+*.key
+id_rsa*
+host_vars/
+group_vars/
