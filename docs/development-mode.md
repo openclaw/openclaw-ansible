@@ -22,7 +22,7 @@ This guide explains how to install OpenClaw in **development mode**, where the a
 
 ```bash
 # Clone the ansible installer
-git clone https://github.com/pasogott/openclaw-ansible.git
+git clone https://github.com/openclaw/openclaw-ansible.git
 cd openclaw-ansible
 
 # Run in development mode
@@ -36,7 +36,7 @@ cd openclaw-ansible
 sudo apt update && sudo apt install -y ansible git
 
 # Clone repository
-git clone https://github.com/pasogott/openclaw-ansible.git
+git clone https://github.com/openclaw/openclaw-ansible.git
 cd openclaw-ansible
 
 # Install collections
