@@ -19,4 +19,4 @@
       when: is_linux
 
   roles:
-    - openclaw.installer.openclaw
+    - openclaw

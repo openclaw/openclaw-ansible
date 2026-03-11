@@ -50,7 +50,7 @@ git clone https://github.com/openclaw/openclaw-ansible.git
 cd openclaw-ansible
 
 # Install in development mode
-ansible-playbook playbooks/install.yml --ask-become-pass -e openclaw_install_mode=development
+./run-playbook.sh -e openclaw_install_mode=development
 ```
 
 ## Installation as Ansible Collection
@@ -211,9 +211,9 @@ For high-security environments, audit before running:
 ```bash
 git clone https://github.com/openclaw/openclaw-ansible.git
 cd openclaw-ansible
-# Review playbooks/install.yml and roles/
-ansible-playbook playbooks/install.yml --check --diff  # Dry run
-ansible-playbook playbooks/install.yml --ask-become-pass
+# Review playbook.yml and roles/
+ansible-playbook playbook.yml --check --diff  # Dry run
+ansible-playbook playbook.yml --ask-become-pass
 ```
 
 ## Documentation
@@ -268,7 +268,7 @@ Build from source for development:
 ./run-playbook.sh -e openclaw_install_mode=development
 
 # Or directly:
-ansible-playbook playbooks/install.yml --ask-become-pass -e openclaw_install_mode=development
+ansible-playbook playbook.yml --ask-become-pass -e openclaw_install_mode=development
 ```
 
 This will:
@@ -286,7 +286,7 @@ You can override them in three ways:
 ### 1. Via Command Line
 
 ```bash
-ansible-playbook playbooks/install.yml --ask-become-pass \
+ansible-playbook playbook.yml --ask-become-pass \
   -e openclaw_install_mode=development \
   -e "openclaw_ssh_keys=['ssh-ed25519 AAAAC3... user@host']"
 ```
@@ -306,7 +306,7 @@ tailscale_authkey: "tskey-auth-xxxxxxxxxxxxx"
 EOF
 
 # Use it
-ansible-playbook playbooks/install.yml --ask-become-pass -e @vars.yml
+ansible-playbook playbook.yml --ask-become-pass -e @vars.yml
 ```
 
 ### 3. Edit Defaults Directly
@@ -333,14 +333,14 @@ See [`roles/openclaw/defaults/main.yml`](roles/openclaw/defaults/main.yml) for t
 #### SSH Keys for Remote Access
 
 ```bash
-ansible-playbook playbooks/install.yml --ask-become-pass \
+ansible-playbook playbook.yml --ask-become-pass \
   -e "openclaw_ssh_keys=['ssh-ed25519 AAAAC3... user@host']"
 ```
 
 #### Development Mode with Custom Repository
 
 ```bash
-ansible-playbook playbooks/install.yml --ask-become-pass \
+ansible-playbook playbook.yml --ask-become-pass \
   -e openclaw_install_mode=development \
   -e openclaw_repo_url=https://github.com/YOUR_USERNAME/openclaw.git \
   -e openclaw_repo_branch=feature-branch
@@ -349,7 +349,7 @@ ansible-playbook playbooks/install.yml --ask-become-pass \
 #### Tailscale Auto-Connect
 
 ```bash
-ansible-playbook playbooks/install.yml --ask-become-pass \
+ansible-playbook playbook.yml --ask-become-pass \
   -e tailscale_authkey=tskey-auth-xxxxxxxxxxxxx
 ```
 

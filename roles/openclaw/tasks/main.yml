@@ -22,6 +22,3 @@
 
 - name: Include OpenClaw setup tasks
   ansible.builtin.include_tasks: openclaw.yml
-
-- name: Include completion tasks
-  ansible.builtin.include_tasks: completion.yml

@@ -37,7 +37,7 @@ extract_openclaw_user_from_args "$@"
 # Determine playbook source
 if [ -f "playbooks/install.yml" ]; then
     echo "Running from local source..."
-    PLAYBOOK="playbooks/install.yml"
+    PLAYBOOK="playbook.yml"
     export ANSIBLE_ROLES_PATH="${PWD}/roles:${ANSIBLE_ROLES_PATH}"
 elif ansible-galaxy collection list 2>/dev/null | grep -q "openclaw.installer"; then
     echo "Running from installed collection..."

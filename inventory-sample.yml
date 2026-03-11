@@ -18,7 +18,8 @@ all:
   vars:
     # SSH Public Keys for the 'openclaw' user (Optional)
     # If set, these keys will be added to ~/.ssh/authorized_keys
-    # server_admin_public_key: "ssh-ed25519 AAAAC3Nz..."
+    # openclaw_ssh_keys:
+    #   - "ssh-ed25519 AAAAC3Nz..."
     
     # Tailscale Auth Key (Optional) - Leave empty to skip auto-connect
     # tailscale_authkey: "tskey-auth-..."
