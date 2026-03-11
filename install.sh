@@ -57,15 +57,24 @@ echo -e "${GREEN}[1/4] Checking prerequisites...${NC}"
 
 # Check if Ansible is installed
 if ! command -v ansible-playbook &> /dev/null; then
-    echo -e "${YELLOW}Ansible not found. Installing...${NC}"
+    echo -e "${YELLOW}Ansible not found. Installing Ansible and git...${NC}"
     $SUDO apt-get update -qq
-    $SUDO apt-get install -y ansible
-    echo -e "${GREEN}✓ Ansible installed${NC}"
+    $SUDO apt-get install -y ansible git
+    echo -e "${GREEN}✓ Ansible and git installed${NC}"
 else
     echo -e "${GREEN}✓ Ansible already installed${NC}"
+    if ! command -v git &> /dev/null; then
+        echo -e "${YELLOW}git not found. Installing...${NC}"
+        $SUDO apt-get update -qq
+        $SUDO apt-get install -y git
+        echo -e "${GREEN}✓ git installed${NC}"
+    else
+        echo -e "${GREEN}✓ git already installed${NC}"
+    fi
 fi
 
-echo -e "${GREEN}[2/5] Downloading playbook...${NC}"
+
+echo -e "${GREEN}[2/4] Downloading playbook...${NC}"
 
 # Download the playbook and role files
 cd "$TEMP_DIR"
@@ -77,10 +86,10 @@ cd openclaw-ansible
 
 echo -e "${GREEN}✓ Playbook downloaded${NC}"
 
-echo -e "${GREEN}[3/5] Installing Ansible collections...${NC}"
+echo -e "${GREEN}[3/4] Installing Ansible collections...${NC}"
 ansible-galaxy collection install -r requirements.yml
 
-echo -e "${GREEN}[4/5] Running Ansible playbook...${NC}"
+echo -e "${GREEN}[4/4] Running Ansible playbook...${NC}"
 if [ "$EUID" -ne 0 ]; then
     echo -e "${YELLOW}You will be prompted for your sudo password.${NC}"
 fi
