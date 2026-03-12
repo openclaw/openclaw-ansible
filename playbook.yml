@@ -1,2 +1,3 @@
 ---
-- ansible.builtin.import_playbook: playbooks/install.yml
+- name: OpenClaw Installation
+  ansible.builtin.import_playbook: playbooks/install.yml

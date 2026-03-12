@@ -51,6 +51,7 @@
 - name: Install pnpm globally
   ansible.builtin.command: npm install -g pnpm
   when: pnpm_check.rc != 0
+  changed_when: pnpm_check.rc != 0
 
 - name: Verify Node.js installation
   ansible.builtin.command: node --version

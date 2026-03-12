@@ -20,6 +20,6 @@ all:
     # If set, these keys will be added to ~/.ssh/authorized_keys
     # openclaw_ssh_keys:
     #   - "ssh-ed25519 AAAAC3Nz..."
-    
+
     # Tailscale Auth Key (Optional) - Leave empty to skip auto-connect
     # tailscale_authkey: "tskey-auth-..."
