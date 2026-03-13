@@ -31,7 +31,8 @@ openclaw_ssh_keys:
   - "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAAB... admin@laptop"
 openclaw_repo_url: "https://github.com/YOUR_USERNAME/openclaw.git"
 openclaw_repo_branch: "main"
-tailscale_authkey: "tskey-auth-xxxxxxxxxxxxx"
+vpn_provider: "netbird"
+netbird_setup_key: "your-setup-key"
 nodejs_version: "22.x"
 ```
 
@@ -167,17 +168,45 @@ These variables only apply when `openclaw_install_mode: development`
   -e nodejs_version=20.x
   ```
 
-### Tailscale Configuration
+### VPN Configuration
+
+#### `vpn_provider`
+- **Type**: String (`"tailscale"`, `"netbird"`, or `""`)
+- **Default**: `""` (disabled)
+- **Description**: VPN provider to install and configure
+- **Example**:
+  ```bash
+  -e vpn_provider=netbird
+  ```
 
 #### `tailscale_authkey`
 - **Type**: String
 - **Default**: `""` (empty - manual setup required)
-- **Description**: Tailscale authentication key for automatic connection
+- **Description**: Tailscale authentication key for automatic connection (when `vpn_provider: "tailscale"`)
 - **Example**:
   ```bash
   -e tailscale_authkey=tskey-auth-k1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6
   ```
 - **Get Key**: https://login.tailscale.com/admin/settings/keys
+
+#### `netbird_setup_key`
+- **Type**: String
+- **Default**: `""` (empty - manual setup required)
+- **Description**: Netbird setup key for automatic connection (when `vpn_provider: "netbird"`)
+- **Example**:
+  ```bash
+  -e netbird_setup_key=your-setup-key
+  ```
+- **Get Key**: https://app.netbird.io/setup-keys
+
+#### `netbird_management_url`
+- **Type**: String
+- **Default**: `""` (empty - uses Netbird Cloud)
+- **Description**: Self-hosted Netbird management server URL (when `vpn_provider: "netbird"`)
+- **Example**:
+  ```bash
+  -e netbird_management_url=https://netbird.example.com
+  ```
 
 ### OS-Specific Settings
 
@@ -225,11 +254,23 @@ openclaw_ssh_keys:
 ansible-playbook playbook.yml --ask-become-pass -e @vars-dev.yml
 ```
 
-### Production Setup with Tailscale
+### Production Setup with VPN
 
 ```yaml
-# vars-prod.yml
+# vars-prod.yml (Netbird example)
 openclaw_install_mode: release
+vpn_provider: "netbird"
+netbird_setup_key: "your-setup-key"
+netbird_management_url: "https://netbird.example.com"  # optional, for self-hosted
+openclaw_ssh_keys:
+  - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGxxxxxxxx admin@mgmt-server"
+nodejs_version: "22.x"
+```
+
+```yaml
+# vars-prod.yml (Tailscale example)
+openclaw_install_mode: release
+vpn_provider: "tailscale"
 tailscale_authkey: "tskey-auth-k1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6"
 openclaw_ssh_keys:
   - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGxxxxxxxx admin@mgmt-server"
@@ -286,7 +327,8 @@ openclaw_ssh_keys:
 ```yaml
 # environments/staging.yml
 openclaw_install_mode: release
-tailscale_authkey: "{{ lookup('env', 'TAILSCALE_AUTHKEY_STAGING') }}"
+vpn_provider: "netbird"
+netbird_setup_key: "{{ lookup('env', 'NETBIRD_SETUP_KEY_STAGING') }}"
 openclaw_ssh_keys:
   - "{{ lookup('file', '~/.ssh/id_ed25519.pub') }}"
 ```
@@ -296,7 +338,9 @@ openclaw_ssh_keys:
 ```yaml
 # environments/prod.yml
 openclaw_install_mode: release
-tailscale_authkey: "{{ lookup('env', 'TAILSCALE_AUTHKEY_PROD') }}"
+vpn_provider: "netbird"
+netbird_setup_key: "{{ lookup('env', 'NETBIRD_SETUP_KEY_PROD') }}"
+netbird_management_url: "{{ lookup('env', 'NETBIRD_MGMT_URL') }}"
 openclaw_ssh_keys:
   - "ssh-ed25519 AAAAC3... ops@prod-mgmt"
   - "ssh-ed25519 AAAAC3... admin@backup-server"
@@ -323,16 +367,23 @@ nodejs_version: "22.x"
      -e "openclaw_ssh_keys=['$(cat ~/.ssh/new_key.pub)']"
    ```
 
-### Tailscale Auth Keys
+### VPN Auth/Setup Keys
 
 1. **Use ephemeral keys** for temporary access
-2. **Set expiration times** for auth keys
+2. **Set expiration times** for auth/setup keys
 3. **Use reusable keys** only for automation
 4. **Store in secrets manager**: Don't commit to git
    ```bash
-   # Use environment variable
+   # Netbird example
+   export NETBIRD_SETUP_KEY=$(vault read -field=key secret/netbird)
+   ansible-playbook playbook.yml --ask-become-pass \
+     -e vpn_provider=netbird \
+     -e netbird_setup_key="$NETBIRD_SETUP_KEY"
+
+   # Tailscale example
    export TAILSCALE_AUTHKEY=$(vault read -field=key secret/tailscale)
    ansible-playbook playbook.yml --ask-become-pass \
+     -e vpn_provider=tailscale \
      -e tailscale_authkey="$TAILSCALE_AUTHKEY"
    ```
 
@@ -342,19 +393,23 @@ Never commit sensitive data to git:
 
 ```yaml
 # ❌ BAD - Don't do this
+netbird_setup_key: "actual-key-here"
 tailscale_authkey: "tskey-auth-actual-key-here"
 
 # ✅ GOOD - Use environment variables or vault
+netbird_setup_key: "{{ lookup('env', 'NETBIRD_SETUP_KEY') }}"
 tailscale_authkey: "{{ lookup('env', 'TAILSCALE_AUTHKEY') }}"
 
 # ✅ GOOD - Use Ansible Vault
+netbird_setup_key: "{{ vault_netbird_setup_key }}"
 tailscale_authkey: "{{ vault_tailscale_authkey }}"
 ```
 
 Create encrypted vault:
 ```bash
 ansible-vault create secrets.yml
-# Add: vault_tailscale_authkey: tskey-auth-xxxxx
+# Add: vault_netbird_setup_key: your-setup-key
+# Or:  vault_tailscale_authkey: tskey-auth-xxxxx
 
 ansible-playbook playbook.yml --ask-become-pass \
   -e @secrets.yml --ask-vault-pass
@@ -385,11 +440,17 @@ sudo ls -la /home/openclaw/.ssh/
 sudo cat /home/openclaw/.ssh/authorized_keys
 ```
 
-### Tailscale Not Connecting
+### VPN Not Connecting
 
-Verify auth key is valid:
+Tailscale - verify auth key is valid:
 ```bash
 sudo tailscale up --authkey=YOUR_KEY --verbose
+```
+
+Netbird - verify setup key and connectivity:
+```bash
+sudo netbird up --setup-key YOUR_KEY
+sudo netbird status
 ```
 
 ### Installation Mode Issues

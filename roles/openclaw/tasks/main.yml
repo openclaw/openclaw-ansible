@@ -4,7 +4,11 @@
 
 - name: Include Tailscale installation tasks
   ansible.builtin.include_tasks: tailscale-linux.yml
-  when: tailscale_enabled | bool
+  when: vpn_provider == "tailscale"
+
+- name: Include Netbird installation tasks
+  ansible.builtin.include_tasks: netbird-linux.yml
+  when: vpn_provider == "netbird"
 
 - name: Include user creation tasks
   ansible.builtin.include_tasks: user.yml
