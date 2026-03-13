@@ -35,20 +35,23 @@ ansible-playbook playbook.yml --ask-become-pass
 
 ## Post-Installation
 
-### 1. Connect to Tailscale
+### 1. Connect VPN (if not auto-connected)
 
+If you set `vpn_provider` but didn't provide an auth/setup key, connect manually:
+
+**Tailscale:**
 ```bash
-# Interactive login
 sudo tailscale up
-
-# Or with auth key for automation
-sudo tailscale up --authkey tskey-auth-xxxxx
-
-# Check status
 sudo tailscale status
 ```
-
 Get auth keys from: https://login.tailscale.com/admin/settings/keys
+
+**Netbird:**
+```bash
+sudo netbird up
+sudo netbird status
+```
+Get setup keys from: https://app.netbird.io/setup-keys
 
 ### 2. Configure OpenClaw
 
@@ -126,11 +129,11 @@ sudo iptables -L DOCKER-USER -n -v
 
 OpenClaw's web interface runs on port 3000 (localhost only).
 
-### Via Tailscale (Recommended)
+### Via VPN (Recommended)
 
 ```bash
-# After connecting Tailscale, browse to:
-http://TAILSCALE_IP:3000
+# After connecting your VPN (Tailscale or Netbird), browse to:
+http://VPN_IP:3000
 ```
 
 Wait, port 3000 is bound to localhost, so this won't work directly. Need to update the compose file or use SSH tunnel.
@@ -147,7 +150,7 @@ ssh -L 3000:localhost:3000 user@server
 ### Security Check
 
 ```bash
-# Check open ports (should show only SSH + Tailscale)
+# Check open ports (should show only SSH + VPN)
 sudo ss -tlnp
 
 # External port scan (only port 22 should be open)
@@ -173,13 +176,16 @@ sudo ufw status verbose
 # 41641/udp                  ALLOW IN    Anywhere
 ```
 
-### Tailscale Status
+### VPN Status
 
+**Tailscale:**
 ```bash
 sudo tailscale status
+```
 
-# Expected output:
-# 100.x.x.x    hostname    user@        linux   -
+**Netbird:**
+```bash
+sudo netbird status
 ```
 
 ## Uninstall
@@ -188,7 +194,8 @@ sudo tailscale status
 # Stop services
 sudo systemctl stop openclaw
 sudo systemctl disable openclaw
-sudo tailscale down
+# sudo tailscale down  (if using Tailscale)
+# sudo netbird down    (if using Netbird)
 
 # Remove containers and data
 sudo docker compose -f /opt/openclaw/docker-compose.yml down
@@ -198,7 +205,7 @@ sudo rm /etc/systemd/system/openclaw.service
 sudo systemctl daemon-reload
 
 # Remove packages (optional)
-sudo apt remove --purge tailscale docker-ce docker-ce-cli containerd.io docker-compose-plugin nodejs
+sudo apt remove --purge tailscale netbird docker-ce docker-ce-cli containerd.io docker-compose-plugin nodejs
 
 # Remove user (optional)
 sudo userdel -r openclaw
@@ -250,19 +257,27 @@ volumes:
 ### Unattended Install
 
 ```bash
-# Set Tailscale auth key in playbook vars
+# Netbird example
 ansible-playbook playbook.yml \
   --ask-become-pass \
+  -e vpn_provider=netbird \
+  -e "netbird_setup_key=your-setup-key"
+
+# Tailscale example
+ansible-playbook playbook.yml \
+  --ask-become-pass \
+  -e vpn_provider=tailscale \
   -e "tailscale_authkey=tskey-auth-xxxxx"
 ```
 
 ### CI/CD Integration
 
 ```yaml
-# Example GitHub Actions
+# Example GitHub Actions (Netbird)
 - name: Deploy OpenClaw
   run: |
     ansible-playbook playbook.yml \
-      -e "tailscale_authkey=${{ secrets.TAILSCALE_KEY }}" \
+      -e vpn_provider=netbird \
+      -e "netbird_setup_key=${{ secrets.NETBIRD_SETUP_KEY }}" \
       --become
 ```

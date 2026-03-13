@@ -103,7 +103,15 @@
     port: '41641'
     proto: udp
     comment: 'Tailscale'
-  when: tailscale_enabled | bool
+  when: vpn_provider == "tailscale"
+
+- name: Allow Netbird WireGuard UDP port 51820
+  community.general.ufw:
+    rule: allow
+    port: '51820'
+    proto: udp
+    comment: 'Netbird WireGuard'
+  when: vpn_provider == "netbird"
 
 - name: Get default network interface
   ansible.builtin.shell:

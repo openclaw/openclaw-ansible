@@ -44,7 +44,15 @@
   changed_when: false
   failed_when: false
 
-- name: Display Tailscale auth URL if not connected (Linux)
+- name: Auto-connect Tailscale with auth key
+  ansible.builtin.command: "tailscale up --authkey {{ tailscale_authkey }}"
+  when:
+    - tailscale_authkey | length > 0
+    - tailscale_status_linux.rc != 0
+  no_log: true
+  changed_when: true
+
+- name: Display Tailscale connection instructions if not connected (Linux)
   ansible.builtin.debug:
     msg:
       - "============================================"
@@ -58,4 +66,6 @@
       - "sudo tailscale up --authkey tskey-auth-xxxxx"
       - ""
       - "Get auth key from: https://login.tailscale.com/admin/settings/keys"
-  when: tailscale_status_linux.rc != 0
+  when:
+    - tailscale_status_linux.rc != 0
+    - tailscale_authkey | length == 0

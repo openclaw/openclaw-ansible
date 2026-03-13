@@ -29,8 +29,10 @@ echo ""
 echo "🔒 Security Status:"
 echo "  - UFW Firewall: ENABLED"
 {% endraw %}
-{% if tailscale_enabled | default(false) %}
+{% if vpn_provider | default("") == "tailscale" %}
 echo "  - Open Ports: SSH (22) + Tailscale (41641/udp)"
+{% elif vpn_provider | default("") == "netbird" %}
+echo "  - Open Ports: SSH (22) + Netbird (51820/udp)"
 {% else %}
 echo "  - Open Ports: SSH (22)"
 {% endif %}

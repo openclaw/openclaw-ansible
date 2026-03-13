@@ -1,0 +1,72 @@
+---
+# Linux-specific Netbird installation (Debian/Ubuntu)
+
+- name: Add Netbird GPG key
+  ansible.builtin.shell:
+    cmd: |
+      set -o pipefail
+      curl -sSL https://pkgs.netbird.io/debian/public.key | \
+        gpg --dearmor --output /usr/share/keyrings/netbird-archive-keyring.gpg
+    creates: /usr/share/keyrings/netbird-archive-keyring.gpg
+    executable: /bin/bash
+
+- name: Add Netbird repository
+  ansible.builtin.copy:
+    dest: /etc/apt/sources.list.d/netbird.list
+    content: "deb [signed-by=/usr/share/keyrings/netbird-archive-keyring.gpg] https://pkgs.netbird.io/debian stable main\n"
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Update apt cache after adding Netbird repo
+  ansible.builtin.apt:
+    update_cache: true
+
+- name: Install Netbird
+  ansible.builtin.apt:
+    name: netbird
+    state: present
+
+- name: Enable Netbird service (Linux)
+  ansible.builtin.systemd:
+    name: netbird
+    enabled: true
+    state: started
+
+- name: Check if Netbird is already connected (Linux)
+  ansible.builtin.command: netbird status
+  register: netbird_status_linux
+  changed_when: false
+  failed_when: false
+
+- name: Auto-connect Netbird with setup key
+  ansible.builtin.command: >-
+    netbird up
+    --setup-key {{ netbird_setup_key }}
+    {% if netbird_management_url | length > 0 %}--management-url {{ netbird_management_url }}{% endif %}
+  when:
+    - netbird_setup_key | length > 0
+    - "'Connected' not in netbird_status_linux.stdout"
+  no_log: true
+  changed_when: true
+
+- name: Display Netbird connection instructions if not connected (Linux)
+  ansible.builtin.debug:
+    msg:
+      - "============================================"
+      - "Netbird installed but not connected yet"
+      - "============================================"
+      - ""
+      - "To connect this machine to your Netbird network:"
+      - "Run: sudo netbird up"
+      - ""
+      - "For unattended installation, use a setup key:"
+      - "sudo netbird up --setup-key <YOUR-SETUP-KEY>"
+      - ""
+      - "For self-hosted Netbird:"
+      - "sudo netbird up --setup-key <KEY> --management-url https://netbird.example.com"
+      - ""
+      - "Get setup keys from: https://app.netbird.io/setup-keys"
+  when:
+    - "'Connected' not in netbird_status_linux.stdout"
+    - netbird_setup_key | length == 0

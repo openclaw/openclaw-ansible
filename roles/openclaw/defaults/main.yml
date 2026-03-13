@@ -4,10 +4,18 @@
 # CI testing mode - skips tasks that require systemd, Docker-in-Docker, or kernel access
 ci_test: false
 
-# Tailscale settings
+# VPN settings (choose one or none)
+# Options: "tailscale", "netbird", or "" (disabled)
+vpn_provider: ""
+
+# Tailscale settings (when vpn_provider: "tailscale")
 # WARNING: Tasks using tailscale_authkey MUST set no_log: true to prevent credential exposure
-tailscale_enabled: false  # Set to true to install and configure Tailscale
-tailscale_authkey: ""  # Optional: set to auto-connect during installation
+tailscale_authkey: ""  # Optional: auto-connect with auth key
+
+# Netbird settings (when vpn_provider: "netbird")
+# WARNING: Tasks using netbird_setup_key MUST set no_log: true to prevent credential exposure
+netbird_setup_key: ""          # Optional: auto-connect with setup key
+netbird_management_url: ""     # Optional: self-hosted management URL (leave empty for cloud)
 
 # Node.js version
 nodejs_version: "22.x"

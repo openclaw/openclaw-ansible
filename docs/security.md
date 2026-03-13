@@ -21,7 +21,8 @@ Routed: DENY
 
 # Allowed
 SSH (22/tcp): ALLOW
-Tailscale (41641/udp): ALLOW
+Tailscale (41641/udp): ALLOW  (when vpn_provider: "tailscale")
+Netbird (51820/udp): ALLOW    (when vpn_provider: "netbird")
 ```
 
 ### Layer 2: Fail2ban (SSH Protection)
@@ -87,7 +88,7 @@ The openclaw user has limited sudo permissions (not full root):
 # Allowed commands only:
 - systemctl start/stop/restart/status openclaw
 - systemctl daemon-reload
-- tailscale commands
+- VPN commands (tailscale or netbird, depending on vpn_provider)
 - journalctl for openclaw logs
 ```
 
@@ -117,13 +118,14 @@ sudo ufw status verbose
 # Check fail2ban
 sudo fail2ban-client status
 
-# Check Tailscale status
-sudo tailscale status
+# Check VPN status
+sudo tailscale status  # if using Tailscale
+sudo netbird status    # if using Netbird
 
 # Check Docker isolation
 sudo iptables -L DOCKER-USER -n -v
 
-# Port scan from external machine (only SSH + Tailscale should be open)
+# Port scan from external machine (only SSH + VPN port should be open)
 nmap -p- YOUR_SERVER_IP
 
 # Test container isolation
@@ -136,7 +138,7 @@ sudo docker rm -f test-nginx
 sudo systemctl status unattended-upgrades
 ```
 
-## Tailscale Access
+## VPN Access
 
 OpenClaw's web interface (port 3000) is bound to localhost. Access it via:
 
@@ -146,13 +148,10 @@ OpenClaw's web interface (port 3000) is bound to localhost. Access it via:
    # Then browse to http://localhost:3000
    ```
 
-2. **Tailscale** (recommended):
+2. **VPN** (recommended):
    ```bash
-   # On server: already done by playbook
-   sudo tailscale up
-   
-   # From your machine:
-   # Browse to http://TAILSCALE_IP:3000
+   # After connecting via Tailscale or Netbird:
+   # Browse to http://VPN_IP:3000
    ```
 
 ## Network Flow
@@ -182,12 +181,12 @@ Container → NAT → Internet (outbound allowed)
 
 After installation, verify:
 
-- [ ] `sudo ufw status` shows only SSH and Tailscale allowed
+- [ ] `sudo ufw status` shows only SSH and VPN port allowed
 - [ ] `sudo fail2ban-client status sshd` shows jail active
 - [ ] `sudo iptables -L DOCKER-USER -n` shows DROP rule
 - [ ] `nmap -p- YOUR_IP` from external shows only port 22
 - [ ] `docker run -p 80:80 nginx` + `curl YOUR_IP:80` times out
-- [ ] Tailscale access works for web UI
+- [ ] VPN access works for web UI (if vpn_provider configured)
 
 ## Reporting Security Issues
 

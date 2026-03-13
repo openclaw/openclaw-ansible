@@ -5,7 +5,7 @@
 [![Ansible](https://img.shields.io/badge/Ansible-2.14+-blue.svg)](https://www.ansible.com/)
 [![Multi-OS](https://img.shields.io/badge/OS-Debian%20%7C%20Ubuntu-orange.svg)](https://www.debian.org/)
 
-Automated, hardened installation of [OpenClaw](https://github.com/openclaw/openclaw) with Docker and Tailscale VPN support for Debian/Ubuntu Linux.
+Automated, hardened installation of [OpenClaw](https://github.com/openclaw/openclaw) with Docker and VPN support (Tailscale or Netbird) for Debian/Ubuntu Linux.
 
 ## ⚠️ macOS Support: Deprecated & Disabled
 
@@ -24,7 +24,7 @@ The underlying project currently requires system-level permissions and configura
 - 🔒 **Firewall-first**: UFW firewall + Docker isolation
 - 🛡️ **Fail2ban**: SSH brute-force protection out of the box
 - 🔄 **Auto-updates**: Automatic security patches via unattended-upgrades
-- 🔐 **Tailscale VPN**: Secure remote access without exposing services
+- 🔐 **VPN Support**: Tailscale or Netbird for secure remote access
 - 🐳 **Docker**: Docker CE with security hardening
 - 🚀 **One-command install**: Complete setup in minutes
 - 🔧 **Auto-configuration**: DBus, systemd, environment setup
@@ -55,8 +55,8 @@ cd openclaw-ansible
 
 ## What Gets Installed
 
-- Tailscale (mesh VPN)
-- UFW firewall (SSH + Tailscale ports only)
+- VPN: Tailscale or Netbird (optional, choose one)
+- UFW firewall (SSH + VPN ports only)
 - Docker CE + Compose V2 (for sandboxes)
 - Node.js 22.x + pnpm
 - OpenClaw on host (not containerized)
@@ -241,7 +241,7 @@ Enable with: `-e openclaw_install_mode=development`
 
 ## Security
 
-- **Public ports**: SSH (22), Tailscale (41641/udp) only
+- **Public ports**: SSH (22) + VPN port only (Tailscale 41641/udp or Netbird 51820/udp)
 - **Fail2ban**: SSH brute-force protection (5 attempts → 1 hour ban)
 - **Automatic updates**: Security patches via unattended-upgrades
 - **Docker isolation**: Containers can't expose ports externally (DOCKER-USER chain)
@@ -303,7 +303,8 @@ openclaw_ssh_keys:
   - "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAAB... user@host"
 openclaw_repo_url: "https://github.com/YOUR_USERNAME/openclaw.git"
 openclaw_repo_branch: "feature-branch"
-tailscale_authkey: "tskey-auth-xxxxxxxxxxxxx"
+vpn_provider: "netbird"
+netbird_setup_key: "your-setup-key"
 EOF
 
 # Use it
@@ -324,7 +325,10 @@ Edit `roles/openclaw/defaults/main.yml` before running the playbook.
 | `openclaw_ssh_keys` | `[]` | List of SSH public keys |
 | `openclaw_repo_url` | `https://github.com/openclaw/openclaw.git` | Git repository (dev mode) |
 | `openclaw_repo_branch` | `main` | Git branch (dev mode) |
+| `vpn_provider` | `""` | VPN provider: `"tailscale"`, `"netbird"`, or `""` (none) |
 | `tailscale_authkey` | `""` | Tailscale auth key for auto-connect |
+| `netbird_setup_key` | `""` | Netbird setup key for auto-connect |
+| `netbird_management_url` | `""` | Netbird self-hosted management URL (optional) |
 | `nodejs_version` | `22.x` | Node.js version to install |
 
 See [`roles/openclaw/defaults/main.yml`](roles/openclaw/defaults/main.yml) for the complete list.
@@ -347,11 +351,24 @@ ansible-playbook playbook.yml --ask-become-pass \
   -e openclaw_repo_branch=feature-branch
 ```
 
-#### Tailscale Auto-Connect
+#### VPN Auto-Connect
 
 ```bash
+# Tailscale
 ansible-playbook playbook.yml --ask-become-pass \
+  -e vpn_provider=tailscale \
   -e tailscale_authkey=tskey-auth-xxxxxxxxxxxxx
+
+# Netbird
+ansible-playbook playbook.yml --ask-become-pass \
+  -e vpn_provider=netbird \
+  -e netbird_setup_key=your-setup-key
+
+# Netbird (self-hosted)
+ansible-playbook playbook.yml --ask-become-pass \
+  -e vpn_provider=netbird \
+  -e netbird_setup_key=your-setup-key \
+  -e netbird_management_url=https://netbird.example.com
 ```
 
 ## License

@@ -63,10 +63,11 @@ systemd → docker compose → openclaw container
 
 ## Installation Flow
 
-1. **Tailscale Setup** (`tailscale.yml`)
-   - Add Tailscale repository
-   - Install Tailscale package
-   - Display connection instructions
+1. **VPN Setup** (`tailscale-linux.yml` or `netbird-linux.yml`)
+   - Add VPN provider repository
+   - Install VPN package
+   - Auto-connect if auth/setup key provided
+   - Display connection instructions otherwise
 
 2. **User Creation** (`user.yml`)
    - Create `openclaw` system user
@@ -80,7 +81,7 @@ systemd → docker compose → openclaw container
    - Install UFW
    - Configure DOCKER-USER chain
    - Configure Docker daemon (`/etc/docker/daemon.json`)
-   - Allow SSH (22/tcp) and Tailscale (41641/udp)
+   - Allow SSH (22/tcp) and VPN port (Tailscale 41641/udp or Netbird 51820/udp)
 
 5. **Node.js Installation** (`nodejs.yml`)
    - Add NodeSource repository
@@ -119,7 +120,7 @@ Principle of least privilege. If container is compromised, attacker has limited 
 
 ```
 main.yml
-├── tailscale.yml (VPN setup)
+├── tailscale-linux.yml / netbird-linux.yml (VPN setup, conditional on vpn_provider)
 ├── user.yml (create openclaw user)
 ├── docker.yml (install Docker, create /etc/docker)
 ├── firewall.yml (configure UFW + Docker daemon)
