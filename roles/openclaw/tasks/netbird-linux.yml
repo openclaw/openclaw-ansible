@@ -1,6 +1,13 @@
 ---
 # Linux-specific Netbird installation (Debian/Ubuntu)
 
+- name: Install required packages for Netbird repo setup
+  ansible.builtin.apt:
+    name:
+      - gnupg
+      - curl
+    state: present
+
 - name: Add Netbird GPG key
   ansible.builtin.shell:
     cmd: |
