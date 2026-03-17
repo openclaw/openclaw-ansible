@@ -160,6 +160,12 @@ curl http://localhost:80        # Should work
 sudo docker rm -f test-nginx
 ```
 
+Expected results:
+
+- `ss -tlnp` shows SSH on `:22`, Tailscale on `:41641`, and the OpenClaw web UI only on `127.0.0.1:3000`.
+- `nmap -p- YOUR_SERVER_IP` reports only `22/tcp` and your Tailscale UDP port as reachable from outside.
+- `curl http://YOUR_SERVER_IP:80` fails or times out, while `curl http://localhost:80` returns the nginx welcome page during the temporary isolation test.
+
 ### UFW Status
 
 ```bash
@@ -181,6 +187,8 @@ sudo tailscale status
 # Expected output:
 # 100.x.x.x    hostname    user@        linux   -
 ```
+
+The key thing to look for is that the machine appears in your tailnet and does not show as logged out or stopped.
 
 ## Uninstall
 
