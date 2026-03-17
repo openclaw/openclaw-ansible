@@ -102,6 +102,33 @@ openclaw status
 openclaw logs
 ```
 
+## Quick Verification
+
+Run these checks before you start onboarding real accounts:
+
+```bash
+# Service should be active
+sudo systemctl status openclaw --no-pager
+
+# OpenClaw should listen on localhost, not on all interfaces
+sudo ss -tlnp | grep -E '(:22|:41641|:3000)'
+
+# Firewall should allow SSH + Tailscale only
+sudo ufw status verbose
+
+# Docker isolation rule should still be present
+sudo iptables -L DOCKER-USER -n -v
+```
+
+Expected results:
+
+- `systemctl status` shows `Active: active (running)` for the `openclaw` service.
+- `ss -tlnp` shows SSH on `:22`, Tailscale on `:41641`, and the OpenClaw web UI bound to `127.0.0.1:3000` instead of `0.0.0.0:3000`.
+- `ufw status verbose` is `active` and only allows inbound SSH (`22/tcp`) and Tailscale (`41641/udp`) by default.
+- `iptables -L DOCKER-USER -n -v` includes a `DROP` rule for the default external interface, which prevents accidental public container exposure.
+
+For a longer verification checklist, including external port scanning and container-isolation checks, see [docs/installation.md#verification](docs/installation.md#verification) and [docs/security.md#verification](docs/security.md#verification).
+
 ## Manual Installation
 
 ### Release Mode (Default)
