@@ -11,7 +11,7 @@ This guide explains how to install OpenClaw in **development mode**, where the a
 | Source | npm registry | GitHub repository |
 | Installation | `pnpm install -g openclaw@latest` | `git clone` + `pnpm build` |
 | Location | `~/.local/share/pnpm/global/...` | `~/code/openclaw/` |
-| Binary | Global pnpm package | Symlink to `bin/openclaw.js` |
+| Binary | Global pnpm package | Symlink to the detected repo CLI entrypoint |
 | Updates | `pnpm install -g openclaw@latest` | `git pull` + `pnpm build` |
 | Use Case | Production, stable deployments | Development, testing, debugging |
 | Recommended For | End users | Developers, contributors |
@@ -59,15 +59,13 @@ ansible-playbook playbook.yml --ask-become-pass -e openclaw_install_mode=develop
 │   └── logs/
 ├── .local/
 │   ├── bin/
-│   │   └── openclaw       # Symlink -> ~/code/openclaw/bin/openclaw.js
+│   │   └── openclaw       # Symlink -> current CLI entrypoint in ~/code/openclaw
 │   └── share/pnpm/
 └── code/
     └── openclaw/          # Git repository
-        ├── bin/
-        │   └── openclaw.js
         ├── dist/          # Built files
         ├── src/           # Source code
-        ├── package.json
+        ├── package.json   # Used to resolve the CLI entrypoint
         └── pnpm-lock.yaml
 ```
 
@@ -97,11 +95,12 @@ The Ansible playbook performs these steps:
    pnpm build
    ```
 
-5. **Create symlink**
-   ```bash
-   ln -sf ~/code/openclaw/bin/openclaw.js ~/.local/bin/openclaw
-   chmod +x ~/code/openclaw/bin/openclaw.js
-   ```
+5. **Resolve the CLI entrypoint and create symlink**
+
+   The current playbook does not hardcode `bin/openclaw.js`.
+   It first checks the `package.json` `bin` entry and then falls back to
+   `openclaw.mjs`, `bin/openclaw.js`, and `dist/index.js` if needed before
+   linking the detected entrypoint to `~/.local/bin/openclaw`.
 
 6. **Add development aliases** to `.bashrc`:
    ```bash
@@ -264,10 +263,17 @@ pnpm build
 # Check symlink
 ls -la ~/.local/bin/openclaw
 
-# Recreate symlink
-rm ~/.local/bin/openclaw
-ln -sf ~/code/openclaw/bin/openclaw.js ~/.local/bin/openclaw
-chmod +x ~/code/openclaw/bin/openclaw.js
+# Show the actual target
+readlink -f ~/.local/bin/openclaw
+```
+
+If the target is stale after switching branches or rebuilding, rerun the
+development-mode playbook so it can detect the current CLI entrypoint again
+instead of hardcoding `bin/openclaw.js`.
+
+```bash
+cd /path/to/openclaw-ansible
+./run-playbook.sh -e openclaw_install_mode=development
 ```
 
 ### Command Not Found
@@ -396,10 +402,10 @@ You can have multiple clones:
 
 # Experimental features
 ~/code/openclaw-test/     # testing branch
-
-# Switch binary symlink
-ln -sf ~/code/openclaw-test/bin/openclaw.js ~/.local/bin/openclaw
 ```
+
+To switch the active checkout, rerun the development-mode playbook against the
+repo you want to use so it re-detects the correct CLI entrypoint for that tree.
 
 ### Custom Build Options
 
