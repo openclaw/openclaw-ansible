@@ -183,6 +183,108 @@ Clean lifecycle, auto-start, logging integration.
 - Update CHANGELOG.md with user-facing changes
 - No version numbers in code (use git tags)
 
+## Deployed Instances
+
+### Donna (tripoli-v1)
+
+| Field | Value |
+|-------|-------|
+| **Public IP** | 46.250.242.89 |
+| **OS** | Ubuntu 24.04 LTS |
+| **Hostname** | donna |
+| **User** | `openclaw` (non-root, scoped sudo) |
+| **Tailscale IP** | 100.80.129.84 |
+| **Tailscale FQDN** | donna.taild24604.ts.net |
+| **Tailnet** | taild24604.ts.net |
+| **GitHub account** | donna-grooms |
+
+#### Gateway
+
+- **Dashboard:** `https://donna.taild24604.ts.net/`
+- **WebSocket:** `wss://donna.taild24604.ts.net`
+- **Auth mode:** token
+- **Bind:** loopback (Tailscale Serve proxies TLS)
+- **Tailscale mode:** serve (tailnet-only, not public funnel)
+- **Port:** 18789
+
+#### Headless Browser
+
+- **Profile:** `headless` (systemd user service: `chromium-headless.service`)
+- **CDP Port:** 18801
+- **Browser:** Chromium 145 (snap, headless)
+- Usage: `openclaw browser --browser-profile headless <command>`
+
+Note: `openclaw browser start` cannot launch snap Chromium through the gateway.
+The workaround is a separate systemd user service that runs Chromium with
+`--remote-debugging-port=18801`. The `headless` profile connects to it via CDP.
+
+#### Installed Tools
+
+| Tool | Package | Update command |
+|------|---------|----------------|
+| OpenClaw | openclaw | `pnpm install -g openclaw@latest` |
+| Claude Code | @anthropic-ai/claude-code | `pnpm install -g @anthropic-ai/claude-code` |
+| Codex CLI | @openai/codex | `pnpm install -g @openai/codex` |
+| gogcli | github.com/steipete/gogcli | `go install github.com/steipete/gogcli/cmd/gog@latest` |
+| GitHub CLI | gh (apt repo) | `apt-get update && apt-get upgrade gh` |
+| bird (X/Twitter) | @steipete/bird (deprecated) | `pnpm install -g @steipete/bird` |
+| clawhub | clawhub | `pnpm install -g clawhub` |
+| video-frames | video-frames | `pnpm install -g video-frames` |
+
+#### SSH Access
+
+```bash
+ssh openclaw@46.250.242.89       # via public IP
+ssh openclaw@donna               # via Tailscale
+```
+
+#### Post-Playbook Customizations
+
+Changes made after the Ansible playbook ran (not yet in playbook):
+
+1. **bashrc PATH fix**: Moved `PNPM_HOME` and `PATH` exports before the
+   non-interactive shell guard (`case $- in`) so tools work in non-interactive
+   SSH sessions.
+2. **Go bin in PATH**: Added `/home/openclaw/go/bin` to PATH.
+3. **npm prefix**: Set `npm config set prefix ~/.local` to avoid permission
+   errors on `npm install -g`.
+4. **Environment variables** (in bashrc, before non-interactive guard):
+   - `GOG_KEYRING_PASSWORD` / `GOG_KEYRING_BACKEND` — gogcli file keyring
+   - `CT0` / `AUTH_TOKEN` — X/Twitter cookies for bird CLI
+5. **Tailscale Serve**: `tailscale serve --bg http://127.0.0.1:18789`
+6. **Gateway config**: `tailscale.mode: "serve"`, `bind: "loopback"`
+7. **Device pairing**: Dashboard connections require `openclaw devices approve`
+
+### TARS
+
+| Field | Value |
+|-------|-------|
+| **Tailscale IP** | 100.95.24.62 |
+| **Tailscale FQDN** | tars.taild24604.ts.net |
+| **Dashboard** | `https://tars.taild24604.ts.net/` |
+
+### Inter-Instance Communication
+
+Both instances on the same tailnet. Each exposes its gateway via Tailscale Serve:
+
+```
+Donna -> https://tars.taild24604.ts.net/
+TARS  -> https://donna.taild24604.ts.net/
+```
+
+Webhook endpoints: `https://<hostname>.taild24604.ts.net/hooks`
+
+No public exposure. Encrypted via Tailscale. Zero config networking.
+
+### Tailnet Overview
+
+| Hostname | Tailscale IP | Role |
+|----------|-------------|------|
+| donna | 100.80.129.84 | OpenClaw instance |
+| tars | 100.95.24.62 | OpenClaw instance |
+| extractor-vps | 100.97.176.27 | Other |
+| gerds-macbook-pro | 100.98.25.89 | Dev machine |
+
 ## Support Channels
 
 - OpenClaw issues: https://github.com/openclaw/openclaw
