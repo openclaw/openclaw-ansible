@@ -32,6 +32,20 @@
     - { path: "{{ openclaw_config_dir }}/agents/main/agent", mode: '0700' }
     - { path: "{{ openclaw_config_dir }}/workspace", mode: '0755' }
 
+# Stat BEFORE the create-directories task below — otherwise the non-recursive
+# chown baked into that task would reset ownership on the top-level pnpm dir
+# every run, making the recursive guard below always evaluate false and never
+# repair drift deeper in the subtree.
+- name: Check pnpm subtree ownership (scan for drift before any chown)
+  ansible.builtin.shell:
+    cmd: >-
+      find {{ openclaw_home }}/.local/share/pnpm -not -user {{ openclaw_user }}
+      -o -not -group {{ openclaw_user }} 2>/dev/null | head -n 1
+  register: pnpm_ownership_drift
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
 - name: Create pnpm directories
   ansible.builtin.file:
     path: "{{ item }}"
@@ -44,12 +58,7 @@
     - "{{ openclaw_home }}/.local/share/pnpm/store"
     - "{{ openclaw_home }}/.local/bin"
 
-- name: Check pnpm dir ownership
-  ansible.builtin.stat:
-    path: "{{ openclaw_home }}/.local/share/pnpm"
-  register: pnpm_dir_stat
-
-- name: Ensure pnpm directories have correct ownership
+- name: Ensure pnpm directories have correct ownership (recursive, only on drift)
   ansible.builtin.file:
     path: "{{ openclaw_home }}/.local/share/pnpm"
     state: directory
@@ -57,10 +66,7 @@
     group: "{{ openclaw_user }}"
     recurse: true
     mode: '0755'
-  when:
-    - not pnpm_dir_stat.stat.exists
-      or pnpm_dir_stat.stat.pw_name != openclaw_user
-      or pnpm_dir_stat.stat.gr_name != openclaw_user
+  when: pnpm_ownership_drift.stdout | default('') | length > 0
 
 - name: Configure pnpm for openclaw user
   ansible.builtin.shell:
