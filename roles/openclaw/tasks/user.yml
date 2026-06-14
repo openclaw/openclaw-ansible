@@ -28,7 +28,7 @@
 
       # Add pnpm to PATH
       export PNPM_HOME="{{ openclaw_home }}/.local/share/pnpm"
-      export PATH="{{ openclaw_home }}/.local/bin:$PNPM_HOME:$PATH"
+      export PATH="{{ openclaw_home }}/.local/bin:$PNPM_HOME/bin:$PNPM_HOME:$PATH"
 
       # Color support for common tools
       export CLICOLOR=1

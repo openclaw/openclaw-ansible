@@ -110,7 +110,7 @@
     block: |
       # pnpm configuration
       export PNPM_HOME="{{ openclaw_home }}/.local/share/pnpm"
-      export PATH="{{ openclaw_home }}/.local/bin:$PNPM_HOME:$PATH"
+      export PATH="{{ openclaw_home }}/.local/bin:$PNPM_HOME/bin:$PNPM_HOME:$PATH"
     create: true
     owner: "{{ openclaw_user }}"
     group: "{{ openclaw_user }}"
