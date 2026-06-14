@@ -9,7 +9,17 @@
   become_user: "{{ openclaw_user }}"
   environment:
     PNPM_HOME: "{{ openclaw_home }}/.local/share/pnpm"
-    PATH: "{{ openclaw_home }}/.local/bin:{{ openclaw_home }}/.local/share/pnpm/bin:{{ openclaw_home }}/.local/share/pnpm:/usr/local/bin:/usr/bin:/bin"
+    PATH: >-
+      {{
+        [
+          openclaw_home ~ '/.local/bin',
+          openclaw_home ~ '/.local/share/pnpm/bin',
+          openclaw_home ~ '/.local/share/pnpm',
+          '/usr/local/bin',
+          '/usr/bin',
+          '/bin'
+        ] | join(':')
+      }}
     HOME: "{{ openclaw_home }}"
   register: openclaw_existing
   changed_when: false
@@ -23,7 +33,17 @@
   become_user: "{{ openclaw_user }}"
   environment:
     PNPM_HOME: "{{ openclaw_home }}/.local/share/pnpm"
-    PATH: "{{ openclaw_home }}/.local/bin:{{ openclaw_home }}/.local/share/pnpm/bin:{{ openclaw_home }}/.local/share/pnpm:/usr/local/bin:/usr/bin:/bin"
+    PATH: >-
+      {{
+        [
+          openclaw_home ~ '/.local/bin',
+          openclaw_home ~ '/.local/share/pnpm/bin',
+          openclaw_home ~ '/.local/share/pnpm',
+          '/usr/local/bin',
+          '/usr/bin',
+          '/bin'
+        ] | join(':')
+      }}
     HOME: "{{ openclaw_home }}"
   register: openclaw_install
   changed_when: false
@@ -45,7 +65,17 @@
   become_user: "{{ openclaw_user }}"
   environment:
     PNPM_HOME: "{{ openclaw_home }}/.local/share/pnpm"
-    PATH: "{{ openclaw_home }}/.local/bin:{{ openclaw_home }}/.local/share/pnpm/bin:{{ openclaw_home }}/.local/share/pnpm:/usr/local/bin:/usr/bin:/bin"
+    PATH: >-
+      {{
+        [
+          openclaw_home ~ '/.local/bin',
+          openclaw_home ~ '/.local/share/pnpm/bin',
+          openclaw_home ~ '/.local/share/pnpm',
+          '/usr/local/bin',
+          '/usr/bin',
+          '/bin'
+        ] | join(':')
+      }}
     HOME: "{{ openclaw_home }}"
   register: openclaw_version
   changed_when: >-
