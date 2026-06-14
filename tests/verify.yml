@@ -15,7 +15,7 @@
 
     - name: Verify critical packages installed
       ansible.builtin.command: "dpkg -s {{ item }}"
-      loop: [git, curl, vim, jq, tmux, tree, htop]
+      loop: [git, curl, vim, jq, tmux, tree, htop, sudo]
       changed_when: false
 
     - name: Verify Node.js installed

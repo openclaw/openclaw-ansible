@@ -38,6 +38,7 @@
       - unzip
       - rsync
       - less
+      - sudo
       # Build essentials for development
       - build-essential
       - file
