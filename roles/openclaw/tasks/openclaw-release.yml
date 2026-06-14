@@ -26,8 +26,7 @@
     PATH: "{{ openclaw_home }}/.local/bin:{{ openclaw_home }}/.local/share/pnpm/bin:{{ openclaw_home }}/.local/share/pnpm:/usr/local/bin:/usr/bin:/bin"
     HOME: "{{ openclaw_home }}"
   register: openclaw_install
-  changed_when: "'Already up to date' not in openclaw_install.stdout"
-  when: openclaw_existing.rc != 0
+  changed_when: false
 
 - name: Ensure pnpm tree ownership after OpenClaw release install
   ansible.builtin.file:
@@ -36,7 +35,7 @@
     owner: "{{ openclaw_user }}"
     group: "{{ openclaw_user }}"
     recurse: true
-    mode: '0755'
+  changed_when: false
 
 - name: Verify openclaw installation
   ansible.builtin.shell:
@@ -49,7 +48,9 @@
     PATH: "{{ openclaw_home }}/.local/bin:{{ openclaw_home }}/.local/share/pnpm/bin:{{ openclaw_home }}/.local/share/pnpm:/usr/local/bin:/usr/bin:/bin"
     HOME: "{{ openclaw_home }}"
   register: openclaw_version
-  changed_when: false
+  changed_when: >-
+    openclaw_existing.rc != 0 or
+    openclaw_existing.stdout | default('') != openclaw_version.stdout
 
 - name: Display installed OpenClaw version (release)
   ansible.builtin.debug:
