@@ -6,7 +6,9 @@ openclaw_firewall_backend: firewalld
 openclaw_linux_package_manager: dnf
 openclaw_quadlet_dir: "{{ openclaw_home }}/.config/containers/systemd"
 openclaw_quadlet_service_name: openclaw.service
-openclaw_podman_image: ghcr.io/openclaw/openclaw:latest
+openclaw_podman_image_repo: ghcr.io/openclaw/openclaw
+openclaw_podman_image_tag: latest
+openclaw_podman_image: "{{ openclaw_podman_image_repo }}:{{ openclaw_podman_image_tag }}"
 openclaw_podman_container_name: openclaw
 openclaw_podman_gateway_host_port: 18789
 openclaw_podman_bridge_host_port: 18790

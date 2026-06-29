@@ -161,4 +161,15 @@
       OpenClaw state directories are ready for the rootless Podman Quadlet.
       The container service will be installed and started by the RedHat-family
       Quadlet tasks.
+
+      The OpenClaw gateway runs as a rootless Podman container — there is no
+      host openclaw binary. Manage the service as the openclaw user:
+
+        sudo su - {{ openclaw_user }}
+        systemctl --user status openclaw.service
+        journalctl --user -u openclaw.service -n 100
+
+      To upgrade, pull the new image and restart:
+        podman pull {{ openclaw_podman_image }}
+        systemctl --user restart openclaw.service
   when: openclaw_container_runtime == "podman"

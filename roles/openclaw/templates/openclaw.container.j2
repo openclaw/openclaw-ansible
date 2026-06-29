@@ -20,7 +20,7 @@ Environment=NPM_CONFIG_CACHE=/home/node/.openclaw/.npm
 Environment=OPENCLAW_NO_RESPAWN=1
 PublishPort=127.0.0.1:{{ openclaw_podman_gateway_host_port }}:18789
 PublishPort=127.0.0.1:{{ openclaw_podman_bridge_host_port }}:18790
-Pull=always
+Pull=newer
 Exec=node dist/index.js gateway --bind lan --port 18789
 
 [Service]
