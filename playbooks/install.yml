@@ -20,7 +20,8 @@
       ansible.builtin.set_fact:
         is_linux: "{{ ansible_system == 'Linux' }}"
         is_debian_family: "{{ ansible_os_family == 'Debian' }}"
-        is_supported_distro: "{{ ansible_distribution in ['Debian', 'Ubuntu'] }}"
+        is_redhat_family: "{{ ansible_os_family == 'RedHat' }}"
+        is_supported_distro: "{{ ansible_distribution in ['Debian', 'Ubuntu'] or ansible_os_family == 'RedHat' }}"
 
     - name: Fail on unsupported non-Linux systems
       ansible.builtin.fail:
@@ -41,7 +42,8 @@
       ansible.builtin.fail:
         msg: >-
           Unsupported Linux distribution: {{ ansible_distribution }} {{ ansible_distribution_version }}.
-          This installer currently supports Debian and Ubuntu.
+          This installer supports Debian 11+, Ubuntu 20.04+, Fedora 38+, and
+          RHEL-family 9+ distributions with rootless Podman Quadlet support.
       when:
         - is_linux
         - not is_supported_distro
@@ -53,6 +55,7 @@
           OS Family: {{ ansible_os_family }}
           Linux: {{ is_linux }}
           Debian family: {{ is_debian_family }}
+          RedHat family: {{ is_redhat_family }}
           Supported distro: {{ is_supported_distro }}
 
     - name: Update apt cache and upgrade all packages (Debian/Ubuntu)

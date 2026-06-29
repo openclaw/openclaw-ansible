@@ -1,0 +1,37 @@
+---
+- name: Verify RedHat-family static rootless Podman policy
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  tasks:
+    - name: Read role tasks and templates
+      ansible.builtin.slurp:
+        src: "{{ item }}"
+      loop:
+        - "{{ playbook_dir }}/../roles/openclaw/tasks/main.yml"
+        - "{{ playbook_dir }}/../roles/openclaw/tasks/podman-redhat.yml"
+        - "{{ playbook_dir }}/../roles/openclaw/tasks/quadlet-redhat.yml"
+        - "{{ playbook_dir }}/../roles/openclaw/templates/openclaw.container.j2"
+      register: openclaw_static_files
+
+    - name: Combine static file contents
+      ansible.builtin.set_fact:
+        openclaw_static_content: >-
+          {{ openclaw_static_files.results | map(attribute='content') | map('b64decode') | join('\n') }}
+
+    - name: Assert rootless-only Quadlet policy
+      ansible.builtin.assert:
+        that:
+          - "'/etc/containers/systemd' not in openclaw_static_content"
+          - "'podman.service' not in openclaw_static_content"
+          - "'podman.socket' not in openclaw_static_content"
+          - "'systemctl --user daemon-reload' in openclaw_static_content"
+          - "'systemctl --user is-active --quiet' in openclaw_static_content"
+          - "'become_user:' in openclaw_static_content"
+          - "'openclaw_user' in openclaw_static_content"
+          - "'XDG_RUNTIME_DIR:' in openclaw_static_content"
+          - "'openclaw_uid_value' in openclaw_static_content"
+          - "'UserNS=keep-id' in openclaw_static_content"
+          - "':/home/node/.openclaw:Z' in openclaw_static_content"
+        fail_msg: RedHat-family Podman support must stay rootless-only and Quadlet-backed.

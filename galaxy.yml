@@ -7,7 +7,7 @@ readme: README.md
 authors:
   - OpenClaw Contributors <https://github.com/openclaw>
 
-description: Automated, hardened installation of OpenClaw with Docker and Tailscale VPN support for Debian/Ubuntu Linux.
+description: Automated, hardened OpenClaw installation with OS-native firewall and container runtime support.
 
 license:
   - MIT
@@ -16,15 +16,13 @@ license_file: LICENSE
 
 tags:
   - openclaw
+  - linux
   - docker
-  - tailscale
-  - vpn
+  - podman
+  - firewalld
+  - ufw
   - firewall
-  - security
-  - automation
-  - debian
-  - ubuntu
-  - messaging
+  - tailscale
 
 dependencies:
   community.docker: ">=3.4.0"
@@ -32,21 +30,4 @@ dependencies:
   ansible.posix: ">=1.5.0"
 
 repository: https://github.com/openclaw/openclaw-ansible
-documentation: https://github.com/openclaw/openclaw-ansible/blob/main/README.md
-homepage: https://github.com/openclaw/openclaw
 issues: https://github.com/openclaw/openclaw-ansible/issues
-
-build_ignore:
-  - .git
-  - .gitignore
-  - .github
-  - tests
-  - '*.tar.gz'
-  - install.sh
-  - run-playbook.sh
-  - CHANGELOG.md
-  - AGENTS.md
-  - GIT_COMMIT_MESSAGE.txt
-  - RELEASE_NOTES_v2.0.0.md
-  - UPGRADE_NOTES.md
-  - COLLECTION_MIGRATION_PLAN.md

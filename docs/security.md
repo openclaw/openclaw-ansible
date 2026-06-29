@@ -1,17 +1,26 @@
 ---
 title: Security Architecture
-description: Firewall configuration, Docker isolation, and security hardening details
+description: Firewall, container isolation, and security hardening details
 ---
 
 # Security Architecture
 
-## Overview
+This playbook uses OS-native security controls. Debian and Ubuntu keep the existing Docker + UFW model. Fedora and RHEL-family systems use firewalld and rootless Podman Quadlets only.
 
-This playbook implements a multi-layer defense strategy to secure OpenClaw installations.
+## Security layers by platform
 
-## Security Layers
+| Layer | Debian/Ubuntu | Fedora/RHEL family |
+| --- | --- | --- |
+| Firewall | UFW | firewalld |
+| SSH protection | fail2ban | firewalld baseline; add fail2ban separately if desired |
+| Security updates | unattended-upgrades | OS vendor update tooling |
+| Container runtime | Docker CE + Compose V2 | rootless Podman only |
+| Service model | OpenClaw user service/daemon | rootless Podman Quadlet under the app user |
+| SELinux | Usually not enforcing by default | Kept enabled; bind mounts use `:Z` |
 
-### Layer 1: UFW Firewall
+## Debian and Ubuntu
+
+### UFW firewall
 
 ```bash
 # Default policies
@@ -21,129 +30,112 @@ Routed: DENY
 
 # Allowed
 SSH (22/tcp): ALLOW
-Tailscale (41641/udp): ALLOW
+Tailscale (41641/udp): ALLOW when tailscale_enabled=true
 ```
 
-### Layer 2: Fail2ban (SSH Protection)
-
-Automatic protection against SSH brute-force attacks:
+### Fail2ban SSH protection
 
 ```bash
-# Configuration
-Max retries: 5 attempts
-Ban time: 1 hour (3600 seconds)
-Find time: 10 minutes (600 seconds)
-
-# Check status
 sudo fail2ban-client status sshd
-
-# Unban an IP
-sudo fail2ban-client set sshd unbanip IP_ADDRESS
 ```
 
-### Layer 3: DOCKER-USER Chain
+The default jail allows 5 failed attempts in 10 minutes and bans for 1 hour.
 
-Custom iptables chain that prevents Docker from bypassing UFW:
+### DOCKER-USER chain
 
-```
-*filter
-:DOCKER-USER - [0:0]
+The playbook adds a DOCKER-USER chain that drops externally forwarded traffic before Docker can expose it:
+
+```text
 -A DOCKER-USER -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
 -A DOCKER-USER -i lo -j ACCEPT
 -A DOCKER-USER -i <default_interface> -j DROP
-COMMIT
 ```
 
-**Result**: Even `docker run -p 80:80 nginx` won't expose port 80 externally.
+Result: even `docker run -p 80:80 nginx` should not expose port 80 externally.
 
-### Layer 4: Localhost-Only Binding
+### Automatic security updates
 
-All container ports bind to 127.0.0.1:
+Unattended-upgrades installs security updates automatically. Automatic reboots are disabled.
 
-```yaml
-ports:
-  - "127.0.0.1:3000:3000"
+## Fedora and RHEL-family systems
+
+### firewalld
+
+The playbook installs, enables, and starts `firewalld`. It opens:
+
+- `22/tcp` for SSH
+- `41641/udp` for Tailscale when `tailscale_enabled=true`
+
+Rules are permanent and immediate through `ansible.posix.firewalld`.
+
+### Rootless Podman only
+
+RedHat-family installs use rootless Podman and rootless Quadlets. The playbook intentionally does not support rootful Podman.
+
+The playbook fails instead of:
+
+- enabling rootful Podman services
+- writing Quadlets to system directories
+- falling back to Docker
+- using a root app user
+
+Rootless setup includes:
+
+- `/etc/subuid` and `/etc/subgid` ranges for the `openclaw` user
+- `loginctl enable-linger openclaw`
+- app-user-owned Quadlet directory at `/home/openclaw/.config/containers/systemd/`
+- user-scoped `systemctl --user daemon-reload`
+- user-scoped `systemctl --user enable --now openclaw.service`
+
+### SELinux
+
+SELinux stays enabled. The rootless Quadlet uses private labels on bind mounts:
+
+```text
+Volume=/home/openclaw/.openclaw:/home/node/.openclaw:Z
+Volume=/home/openclaw/.openclaw/workspace:/home/node/.openclaw/workspace:Z
 ```
 
-### Layer 5: Non-Root Container
-
-Container processes run as unprivileged `openclaw` user.
-
-### Layer 6: Systemd Hardening
-
-The openclaw service runs with security restrictions:
-
-- `NoNewPrivileges=true` - Prevents privilege escalation
-- `PrivateTmp=true` - Isolated /tmp directory
-- `ProtectSystem=strict` - Read-only system directories
-- `ProtectHome=read-only` - Limited home directory access
-- `ReadWritePaths` - Only ~/.openclaw is writable
-
-### Layer 7: Scoped Sudo Access
-
-The openclaw user has limited sudo permissions (not full root):
-
-```bash
-# Allowed commands only:
-- systemctl start/stop/restart/status openclaw
-- systemctl daemon-reload
-- tailscale commands
-- journalctl for openclaw logs
-```
-
-### Layer 8: Automatic Security Updates
-
-Unattended-upgrades is configured for automatic security patches:
-
-```bash
-# Check status
-sudo unattended-upgrade --dry-run
-
-# View logs
-sudo cat /var/log/unattended-upgrades/unattended-upgrades.log
-```
-
-**Note**: Automatic reboots are disabled. Monitor for pending reboots:
-```bash
-cat /var/run/reboot-required 2>/dev/null || echo "No reboot required"
-```
+Use `:Z` for private OpenClaw container state. Do not disable SELinux to work around mount issues.
 
 ## Verification
 
-Run these checks after installation and onboarding. Interface names, IP addresses, packet counters, and process IDs vary by host; compare the stated healthy result rather than expecting byte-for-byte output.
+Run these checks after installation and onboarding. Interface names, IP addresses, counters, and process IDs vary by host; compare the stated healthy result rather than expecting byte-for-byte output.
 
 ### Firewall
+
+Debian/Ubuntu:
 
 ```bash
 sudo ufw status verbose
 ```
 
-Expected: `Status: active`, with incoming and routed traffic denied by default. The default rules allow `22/tcp` for SSH and, when Tailscale is enabled, `41641/udp`; IPv6-enabled hosts may show matching `(v6)` entries.
+Expected: `Status: active`, with incoming and routed traffic denied by default. The default rules allow `22/tcp` for SSH and, when Tailscale is enabled, `41641/udp`.
 
-### SSH Protection
+Fedora/RHEL family:
 
 ```bash
-sudo fail2ban-client status
-sudo fail2ban-client status sshd
+sudo firewall-cmd --state
+sudo firewall-cmd --list-all
 ```
 
-Expected: the first command lists `sshd` under `Jail list`; the second reports the jail as active and shows its failure and ban counters. Zero failures or bans is healthy.
+Expected: firewalld is running. The active zone allows SSH and, when Tailscale is enabled, `41641/udp`.
 
-### Local Listeners
+### Local listeners
 
 ```bash
 sudo ss -tlnp
 ```
 
-Expected: SSH listens on the configured public address or `0.0.0.0`; OpenClaw and its supporting services listen on `127.0.0.1`. No OpenClaw or Docker service should listen on `0.0.0.0`.
+Expected: SSH listens on the configured public address or `0.0.0.0`; OpenClaw and supporting services listen on `127.0.0.1`. No OpenClaw service should listen on `0.0.0.0`.
 
-### Docker Isolation
+### Debian/Ubuntu Docker isolation
 
 ```bash
 sudo iptables -L DOCKER-USER -n -v
 ```
 
-Expected: the chain includes accepts for established traffic and loopback traffic, followed by a drop rule for traffic arriving on the server's default external interface. Packet counters may be zero before traffic reaches the chain.
+Expected: the chain accepts established and loopback traffic, then drops traffic arriving on the server's default external interface.
 
 From another machine, scan the server:
 
@@ -151,7 +143,7 @@ From another machine, scan the server:
 nmap -p- YOUR_SERVER_IP
 ```
 
-Expected: only the configured SSH TCP port is open in the default configuration. Tailscale uses UDP port `41641`, so it does not appear in this TCP scan.
+Expected: only the configured SSH TCP port is open in the default configuration.
 
 Then publish a temporary container port:
 
@@ -162,7 +154,32 @@ curl --fail http://localhost:80
 sudo docker rm -f test-nginx
 ```
 
-Expected: the external request fails or times out, while the localhost request returns the nginx welcome page. Remove the test container even if either request produces an unexpected result.
+Expected: the external request fails or times out, while the localhost request returns the nginx welcome page.
+
+### Fedora/RHEL rootless Podman
+
+Run these as the `openclaw` user:
+
+```bash
+loginctl show-user openclaw
+systemctl --user status openclaw.service
+journalctl --user -u openclaw.service -n 100
+podman info --format '{{.Host.Security.Rootless}}'
+podman ps
+```
+
+Expected:
+
+- `Linger=yes` for `openclaw`
+- `openclaw.service` exists under the user systemd manager
+- Podman reports `true` for rootless mode
+- Quadlet file exists at `/home/openclaw/.config/containers/systemd/openclaw.container`
+
+Also confirm no rootful Quadlet path is used:
+
+```bash
+test ! -e /etc/containers/systemd/openclaw.container
+```
 
 ### Tailscale
 
@@ -172,69 +189,52 @@ sudo tailscale status
 
 When Tailscale is enabled, expected: the server has a `100.x.x.x` Tailscale address and appears in the peer table. `Logged out` or `Stopped` means `sudo tailscale up` still needs to be completed. Skip this check when `tailscale_enabled` is false.
 
-### Automatic Security Updates
+## Tailscale access
+
+OpenClaw binds to localhost by default. Access it with an SSH tunnel unless you intentionally configure another private access path:
 
 ```bash
-sudo systemctl status unattended-upgrades
+ssh -L 3000:localhost:3000 user@gateway-host
 ```
 
-Expected: the unit is loaded and active. Use `sudo unattended-upgrade --dry-run --debug` if the service is inactive or reports errors.
+Then browse to `http://localhost:3000` from your workstation.
 
-## Tailscale Access
+## Known limitations
 
-OpenClaw's web interface (port 3000) is bound to localhost. Access it via:
+### Unsupported RedHat-family versions
 
-1. **SSH tunnel**:
-   ```bash
-   ssh -L 3000:localhost:3000 user@server
-   # Then browse to http://localhost:3000
-   ```
+CentOS 7 and RHEL-family 7/8 are unsupported because the installer requires rootless Podman Quadlets. Use Fedora 38+ or a RHEL-family 9+ host.
 
-2. **Tailscale** (recommended):
-   ```bash
-   # On server: already done by playbook
-   sudo tailscale up
-   
-   # From your machine:
-   # Browse to http://TAILSCALE_IP:3000
-   ```
+### Rootful Podman
 
-## Network Flow
-
-```
-Internet → UFW (SSH only) → fail2ban → DOCKER-USER Chain → DROP
-Container → NAT → Internet (outbound allowed)
-```
-
-## Known Limitations
-
-### macOS Support
-- macOS firewall configuration is basic (Application Firewall only)
-- No fail2ban equivalent on macOS
-- Consider using Little Snitch or similar for enhanced macOS security
+Rootful Podman is not supported and will not be added as a fallback. If rootless Podman cannot start, fix the rootless user, subuid/subgid, lingering, or systemd user manager state.
 
 ### IPv6
-- Docker IPv6 is disabled by default (`ip6tables: false` in daemon.json)
-- If your network uses IPv6, review and test firewall rules accordingly
 
-### Installation Script
-- The `curl | bash` installation pattern has inherent risks
-- For high-security environments, clone the repository and audit before running
-- Consider using `--check` mode first: `ansible-playbook playbook.yml --check`
+Docker IPv6 is disabled by default on Debian/Ubuntu (`ip6tables: false` in `daemon.json`). If your network uses IPv6, review and test firewall rules accordingly.
 
-## Security Checklist
+### Installation script
+
+The `curl | bash` installation pattern has inherent risks. For high-security environments, clone the repository and audit before running. Consider `ansible-playbook playbook.yml --check` first.
+
+## Security checklist
 
 After installation, verify:
 
-- [ ] `sudo ufw status` shows only SSH and Tailscale allowed
-- [ ] `sudo fail2ban-client status sshd` shows jail active
-- [ ] `sudo iptables -L DOCKER-USER -n` shows DROP rule
-- [ ] `nmap -p- YOUR_IP` from external shows only port 22
-- [ ] `docker run -p 80:80 nginx` + `curl YOUR_IP:80` times out
-- [ ] Tailscale access works for web UI
+- [ ] Only SSH and optional Tailscale are exposed publicly
+- [ ] Debian/Ubuntu: `sudo ufw status` is active
+- [ ] Debian/Ubuntu: `sudo fail2ban-client status sshd` shows the jail active
+- [ ] Debian/Ubuntu: `sudo iptables -L DOCKER-USER -n` shows the drop rule
+- [ ] Fedora/RHEL family: `sudo firewall-cmd --state` reports `running`
+- [ ] Fedora/RHEL family: `podman info` as `openclaw` reports rootless mode
+- [ ] Fedora/RHEL family: Quadlet file is under `/home/openclaw/.config/containers/systemd/`
+- [ ] Fedora/RHEL family: no OpenClaw Quadlet exists under a system Quadlet directory
+- [ ] External TCP scan shows only the configured SSH port
+- [ ] Tailscale access works when enabled
 
-## Reporting Security Issues
+## Reporting security issues
 
 If you discover a security vulnerability, please report it privately:
+
 - OpenClaw: https://github.com/openclaw/openclaw/security
 - This installer: https://github.com/openclaw/openclaw-ansible/security

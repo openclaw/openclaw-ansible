@@ -4,6 +4,7 @@
 - name: Check existing OpenClaw release installation
   ansible.builtin.shell:
     cmd: openclaw --version
+    chdir: "{{ openclaw_home }}"
     executable: /bin/bash
   become: true
   become_user: "{{ openclaw_user }}"
@@ -27,7 +28,8 @@
 
 - name: Install OpenClaw globally as openclaw user (using pnpm)
   ansible.builtin.shell:
-    cmd: pnpm install -g openclaw@latest
+    cmd: timeout 600 pnpm install -g openclaw@latest --reporter append-only
+    chdir: "{{ openclaw_home }}"
     executable: /bin/bash
   become: true
   become_user: "{{ openclaw_user }}"
@@ -45,12 +47,15 @@
         ] | join(':')
       }}
     HOME: "{{ openclaw_home }}"
+    CI: "true"
+    npm_config_update_notifier: "false"
   register: openclaw_install
   changed_when: false
 
 - name: Verify openclaw installation
   ansible.builtin.shell:
     cmd: openclaw --version
+    chdir: "{{ openclaw_home }}"
     executable: /bin/bash
   become: true
   become_user: "{{ openclaw_user }}"

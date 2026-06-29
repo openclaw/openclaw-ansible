@@ -5,29 +5,45 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Lint](https://github.com/openclaw/openclaw-ansible/actions/workflows/lint.yml/badge.svg)](https://github.com/openclaw/openclaw-ansible/actions/workflows/lint.yml)
 [![Ansible](https://img.shields.io/badge/Ansible-2.14+-blue.svg)](https://www.ansible.com/)
-[![Multi-OS](https://img.shields.io/badge/OS-Debian%20%7C%20Ubuntu-orange.svg)](https://www.debian.org/)
+[![Multi-OS](https://img.shields.io/badge/OS-Debian%20%7C%20Ubuntu%20%7C%20Fedora%20%7C%20RHEL--family-orange.svg)](https://www.ansible.com/)
 
-Automated, hardened installation of [OpenClaw](https://github.com/openclaw/openclaw) with Docker and Tailscale VPN support for Debian/Ubuntu Linux.
+Automated, hardened installation of [OpenClaw](https://github.com/openclaw/openclaw) with OS-native firewall and container runtime support.
 
-## ⚠️ macOS Support: Deprecated & Disabled
+## Supported platforms
 
-**Effective 2026-02-06, support for bare-metal macOS installations has been removed from this playbook.**
+| Platform | Version | Firewall | Container runtime |
+| --- | --- | --- | --- |
+| Debian | 11+ | UFW | Docker CE + Compose V2 |
+| Ubuntu | 20.04+ | UFW | Docker CE + Compose V2 |
+| Fedora | 38+ | firewalld | rootless Podman + rootless Quadlets |
+| RHEL, CentOS Stream, AlmaLinux, Rocky Linux, Oracle Linux | 9+ | firewalld | rootless Podman + rootless Quadlets |
 
-### Why?
-The underlying project currently requires system-level permissions and configurations that introduce significant security risks when executed on a primary host OS. To protect user data and system integrity, we have disabled bare-metal execution.
+CentOS 7 and RHEL-family 7/8 are unsupported because this installer requires rootless Podman Quadlets on RedHat-family systems.
 
-### What does this mean?
-* The playbook will now explicitly fail if run on a `Darwin` (macOS) system.
-* We strongly discourage manual workarounds to bypass this check.
-* **Future Support:** We are evaluating a virtualization-first strategy (using Vagrant or Docker) to provide a sandboxed environment for this project in the future.
+## RedHat-family security model
+
+Fedora, RHEL, CentOS Stream, AlmaLinux, Rocky Linux, and Oracle Linux installs use the native RedHat-family stack:
+
+- `dnf`/`yum` packages, not Debian package names
+- `firewalld`, not UFW
+- `podman`, not Docker
+- rootless Podman only
+- rootless Quadlets only, written to `/home/<app-user>/.config/containers/systemd/`
+- SELinux-compatible bind mounts with private `:Z` labels
+
+Rootful Podman is intentionally unsupported. The playbook fails instead of starting rootful Podman services, using system Quadlet directories, or falling back to Docker on RedHat-family systems.
+
+## macOS support is disabled
+
+Bare-metal macOS installs are disabled. Use a Linux VM or server instead.
 
 ## Features
 
-- 🔒 **Firewall-first**: UFW firewall + Docker isolation
-- 🛡️ **Fail2ban**: SSH brute-force protection out of the box
-- 🔄 **Auto-updates**: Automatic security patches via unattended-upgrades
+- 🔒 **Firewall-first**: UFW on Debian/Ubuntu; firewalld on Fedora/RHEL-family systems
+- 🛡️ **Fail2ban**: SSH brute-force protection on Debian/Ubuntu
+- 🔄 **Auto-updates**: Automatic security patches via unattended-upgrades on Debian/Ubuntu
 - 🔐 **Tailscale VPN**: Secure remote access without exposing services
-- 🐳 **Docker**: Docker CE with security hardening
+- 🐳 **Container runtime**: Docker on Debian/Ubuntu; rootless Podman Quadlets on Fedora/RHEL-family systems
 - 🚀 **One-command install**: Complete setup in minutes
 - 🔧 **Auto-configuration**: DBus, systemd, environment setup
 - 📦 **pnpm installation**: Uses `pnpm install -g openclaw@latest`
@@ -57,12 +73,13 @@ cd openclaw-ansible
 
 ## What Gets Installed
 
-- Tailscale (mesh VPN)
-- UFW firewall (SSH + Tailscale ports only)
-- Docker CE + Compose V2 (for sandboxes)
+- Tailscale (mesh VPN, optional)
+- Firewall rules for SSH and optional Tailscale access
+- Docker CE + Compose V2 on Debian/Ubuntu
+- rootless Podman + rootless Quadlets on Fedora/RHEL-family systems
 - Node.js 22.x + pnpm
-- OpenClaw on host (not containerized)
-- Systemd service (auto-start)
+- OpenClaw host CLI and state directories
+- Systemd environment setup for the `openclaw` user
 
 ## Post-Install
 
@@ -72,18 +89,20 @@ After installation completes, switch to the openclaw user:
 sudo su - openclaw
 ```
 
-Then run the quick-start onboarding wizard:
+On Debian/Ubuntu, run the quick-start onboarding wizard:
 
 ```bash
 openclaw onboard --install-daemon
 ```
 
-This will:
-- Guide you through the setup wizard
-- Configure your messaging provider (WhatsApp/Telegram/Signal)
-- Install and start the daemon service
+On Fedora/RHEL-family systems, the playbook installs a rootless Quadlet service. Manage it as the `openclaw` user:
 
-After onboarding, run the [post-install security verification](docs/security.md#verification). The checks confirm that the firewall and SSH protection are active, Docker-published ports remain externally blocked, and OpenClaw only listens on localhost.
+```bash
+systemctl --user status openclaw.service
+journalctl --user -u openclaw.service -f
+```
+
+After onboarding, run the [post-install security verification](docs/security.md#verification). The checks confirm that the firewall and SSH protection are active, published container ports remain localhost-only or externally blocked, and OpenClaw does not listen publicly.
 
 ### Alternative Manual Setup
 
@@ -97,7 +116,7 @@ openclaw providers login
 # Test gateway
 openclaw gateway
 
-# Install as daemon
+# Install as daemon on Debian/Ubuntu if not using onboard
 openclaw daemon install
 openclaw daemon start
 
@@ -110,18 +129,24 @@ openclaw logs
 
 ### Release Mode (Default)
 
-```bash
-# Install dependencies
-sudo apt update && sudo apt install -y ansible git
+Debian/Ubuntu:
 
-# Clone repository
+```bash
+sudo apt update && sudo apt install -y ansible git
+```
+
+Fedora/RHEL-family:
+
+```bash
+sudo dnf install -y ansible git
+```
+
+Then run:
+
+```bash
 git clone https://github.com/openclaw/openclaw-ansible.git
 cd openclaw-ansible
-
-# Install Ansible collections
 ansible-galaxy collection install -r requirements.yml
-
-# Run installation
 ./run-playbook.sh
 ```
 
@@ -130,11 +155,7 @@ ansible-galaxy collection install -r requirements.yml
 Build from source for development:
 
 ```bash
-# Same as above, but with development mode flag
 ./run-playbook.sh -e openclaw_install_mode=development
-
-# Or directly:
-ansible-playbook playbook.yml --ask-become-pass -e openclaw_install_mode=development
 ```
 
 This will:
@@ -243,15 +264,36 @@ Alternatively, to run the playbook from your existing project setup, run the pla
 
 Enable with: `-e openclaw_install_mode=development`
 
+## RedHat-family operations
+
+Run these as the `openclaw` user unless noted:
+
+```bash
+loginctl show-user openclaw
+systemctl --user status openclaw.service
+journalctl --user -u openclaw.service -f
+podman ps
+```
+
+Quadlet files live in:
+
+```text
+/home/openclaw/.config/containers/systemd/openclaw.container
+```
+
+The playbook configures `/etc/subuid`, `/etc/subgid`, and `loginctl enable-linger openclaw` so the rootless user service can persist after reboot.
+
 ## Security
 
 - **Public ports**: SSH (22), Tailscale (41641/udp) only
-- **Fail2ban**: SSH brute-force protection (5 attempts → 1 hour ban)
-- **Automatic updates**: Security patches via unattended-upgrades
-- **Docker isolation**: Containers can't expose ports externally (DOCKER-USER chain)
+- **Fail2ban**: SSH brute-force protection on Debian/Ubuntu
+- **Automatic updates**: Security patches via unattended-upgrades on Debian/Ubuntu
+- **Docker isolation**: Debian/Ubuntu Docker publishes are blocked externally through DOCKER-USER
+- **Rootless Podman**: Fedora/RHEL-family installs never use rootful Podman
 - **Non-root**: OpenClaw runs as unprivileged user
 - **Scoped sudo**: Limited to service management (not full root)
-- **Systemd hardening**: NoNewPrivileges, PrivateTmp, ProtectSystem
+- **Systemd hardening**: NoNewPrivileges, PrivateTmp, ProtectSystem where OpenClaw installs a host daemon
+- **SELinux**: RedHat-family installs keep SELinux enabled and use `:Z` labels for container bind mounts
 
 Run the [post-install security verification](docs/security.md#verification) for commands and expected results. In the default configuration, an external TCP scan should show only SSH on port 22; Tailscale uses UDP and is not included in that TCP scan.
 
@@ -260,109 +302,23 @@ Run the [post-install security verification](docs/security.md#verification) for 
 For high-security environments, audit before running:
 
 ```bash
-git clone https://github.com/openclaw/openclaw-ansible.git
-cd openclaw-ansible
-# Review playbook.yml and roles/
-ansible-playbook playbook.yml --check --diff  # Dry run
-ansible-playbook playbook.yml --ask-become-pass
+curl -fsSL https://raw.githubusercontent.com/openclaw/openclaw-ansible/main/install.sh -o install.sh
+less install.sh
+bash install.sh
 ```
+
+## Configuration
+
+See [docs/configuration.md](docs/configuration.md) for all available variables and customization options.
 
 ## Documentation
 
-- [Configuration Guide](docs/configuration.md) - All configuration options
-- [Development Mode](docs/development-mode.md) - Build from source
-- [Security Architecture](docs/security.md) - Security details
-- [Technical Details](docs/architecture.md) - Architecture overview
-- [Troubleshooting](docs/troubleshooting.md) - Common issues
-- [Agent Guidelines](AGENTS.md) - AI agent instructions
-
-## Requirements
-
-- Debian 11+ or Ubuntu 20.04+
-- Root/sudo access
-- Internet connection
-
-## Configuration Options
-
-All configuration variables can be found in [`roles/openclaw/defaults/main.yml`](roles/openclaw/defaults/main.yml).
-
-You can override them in three ways:
-
-### 1. Via Command Line
-
-```bash
-ansible-playbook playbook.yml --ask-become-pass \
-  -e openclaw_install_mode=development \
-  -e "openclaw_ssh_keys=['ssh-ed25519 AAAAC3... user@host']"
-```
-
-### 2. Via Variables File
-
-```bash
-# Create vars.yml
-cat > vars.yml << EOF
-openclaw_install_mode: development
-openclaw_ssh_keys:
-  - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGxxxxxxxx user@host"
-  - "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAAB... user@host"
-openclaw_repo_url: "https://github.com/YOUR_USERNAME/openclaw.git"
-openclaw_repo_branch: "feature-branch"
-tailscale_authkey: "tskey-auth-xxxxxxxxxxxxx"
-EOF
-
-# Use it
-ansible-playbook playbook.yml --ask-become-pass -e @vars.yml
-```
-
-### 3. Edit Defaults Directly
-
-Edit `roles/openclaw/defaults/main.yml` before running the playbook.
-
-### Available Variables
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `openclaw_user` | `openclaw` | System user name |
-| `openclaw_home` | `/home/openclaw` | User home directory |
-| `openclaw_install_mode` | `release` | `release` or `development` |
-| `openclaw_ssh_keys` | `[]` | List of SSH public keys |
-| `openclaw_repo_url` | `https://github.com/openclaw/openclaw.git` | Git repository (dev mode) |
-| `openclaw_repo_branch` | `main` | Git branch (dev mode) |
-| `tailscale_authkey` | `""` | Tailscale auth key for auto-connect |
-| `nodejs_version` | `22.x` | Node.js version to install |
-
-See [`roles/openclaw/defaults/main.yml`](roles/openclaw/defaults/main.yml) for the complete list.
-
-### Common Configuration Examples
-
-#### SSH Keys for Remote Access
-
-```bash
-ansible-playbook playbook.yml --ask-become-pass \
-  -e "openclaw_ssh_keys=['ssh-ed25519 AAAAC3... user@host']"
-```
-
-#### Development Mode with Custom Repository
-
-```bash
-ansible-playbook playbook.yml --ask-become-pass \
-  -e openclaw_install_mode=development \
-  -e openclaw_repo_url=https://github.com/YOUR_USERNAME/openclaw.git \
-  -e openclaw_repo_branch=feature-branch
-```
-
-#### Tailscale Auto-Connect
-
-```bash
-ansible-playbook playbook.yml --ask-become-pass \
-  -e tailscale_authkey=tskey-auth-xxxxxxxxxxxxx
-```
-
-## License
-
-MIT - see [LICENSE](LICENSE)
+- [Installation Guide](docs/installation.md)
+- [Security Architecture](docs/security.md)
+- [Configuration Reference](docs/configuration.md)
+- [Troubleshooting](docs/troubleshooting.md)
 
 ## Support
 
-- OpenClaw: https://github.com/openclaw/openclaw
-- This installer: https://github.com/openclaw/openclaw-ansible/issues
+- OpenClaw issues: https://github.com/openclaw/openclaw/issues
+- Installer issues: https://github.com/openclaw/openclaw-ansible/issues

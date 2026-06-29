@@ -25,11 +25,19 @@ echo -e "${GREEN}╚════════════════════
 echo ""
 
 # Detect operating system
+PKG_INSTALL=""
 if command -v apt-get &> /dev/null; then
     echo -e "${GREEN}✓ Detected: Debian/Ubuntu Linux${NC}"
+    PKG_INSTALL="apt"
+elif command -v dnf &> /dev/null; then
+    echo -e "${GREEN}✓ Detected: Fedora/RHEL-family Linux${NC}"
+    PKG_INSTALL="dnf"
+elif command -v yum &> /dev/null; then
+    echo -e "${GREEN}✓ Detected: RHEL-family Linux${NC}"
+    PKG_INSTALL="yum"
 else
     echo -e "${RED}✗ Error: Unsupported operating system${NC}"
-    echo -e "${RED}  This installer supports: Debian/Ubuntu Linux only${NC}"
+    echo -e "${RED}  This installer supports: Debian/Ubuntu, Fedora, and RHEL-family Linux${NC}"
     exit 1
 fi
 
@@ -52,15 +60,23 @@ echo -e "${GREEN}[1/3] Checking prerequisites...${NC}"
 # Check if Ansible is installed
 if ! command -v ansible-playbook &> /dev/null; then
     echo -e "${YELLOW}Ansible not found. Installing Ansible and git...${NC}"
-    $SUDO apt-get update -qq
-    $SUDO apt-get install -y ansible git
+    if [ "$PKG_INSTALL" = "apt" ]; then
+        $SUDO apt-get update -qq
+        $SUDO apt-get install -y ansible git
+    else
+        $SUDO $PKG_INSTALL install -y ansible git
+    fi
     echo -e "${GREEN}✓ Ansible and git installed${NC}"
 else
     echo -e "${GREEN}✓ Ansible already installed${NC}"
     if ! command -v git &> /dev/null; then
         echo -e "${YELLOW}git not found. Installing...${NC}"
-        $SUDO apt-get update -qq
-        $SUDO apt-get install -y git
+        if [ "$PKG_INSTALL" = "apt" ]; then
+            $SUDO apt-get update -qq
+            $SUDO apt-get install -y git
+        else
+            $SUDO $PKG_INSTALL install -y git
+        fi
         echo -e "${GREEN}✓ git installed${NC}"
     else
         echo -e "${GREEN}✓ git already installed${NC}"

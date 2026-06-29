@@ -1,0 +1,63 @@
+---
+openclaw_container_runtime: podman
+openclaw_podman_mode: rootless
+openclaw_podman_min_version: "4.4.0"
+openclaw_firewall_backend: firewalld
+openclaw_linux_package_manager: dnf
+openclaw_quadlet_dir: "{{ openclaw_home }}/.config/containers/systemd"
+openclaw_quadlet_service_name: openclaw.service
+openclaw_podman_image: ghcr.io/openclaw/openclaw:latest
+openclaw_podman_container_name: openclaw
+openclaw_podman_gateway_host_port: 18789
+openclaw_podman_bridge_host_port: 18790
+openclaw_podman_subuid_start: 100000
+openclaw_podman_subgid_start: 100000
+openclaw_podman_subid_count: 65536
+openclaw_rootful_podman: false
+openclaw_firewalld_zone: public
+openclaw_system_packages:
+  - vim-enhanced
+  - nano
+  - git
+  - curl
+  - wget
+  - nmap-ncat
+  - net-tools
+  - bind-utils
+  - iputils
+  - traceroute
+  - tcpdump
+  - nmap
+  - socat
+  - telnet
+  - strace
+  - lsof
+  - gdb
+  - sysstat
+  - procps-ng
+  - tmux
+  - tree
+  - jq
+  - unzip
+  - rsync
+  - less
+  - sudo
+  - gcc
+  - gcc-c++
+  - make
+  - file
+  - acl
+  - ca-certificates
+  - gnupg2
+  - openssl
+  - python3
+  - python3-pip
+  - python3-libselinux
+  - shadow-utils
+  - dbus-daemon
+  - podman
+  - slirp4netns
+  - fuse-overlayfs
+  - firewalld
+  - container-selinux
+  - policycoreutils-python-utils

@@ -5,238 +5,212 @@ description: Detailed installation and configuration instructions
 
 # Installation Guide
 
-## Quick Install
+Use this guide to install OpenClaw on a supported Linux server with the OS-native firewall and container runtime.
+
+## Supported platforms
+
+| Platform | Version | Runtime |
+| --- | --- | --- |
+| Debian | 11+ | Docker CE + Compose V2 |
+| Ubuntu | 20.04+ | Docker CE + Compose V2 |
+| Fedora | 38+ | rootless Podman + rootless Quadlets |
+| RHEL, CentOS Stream, AlmaLinux, Rocky Linux, Oracle Linux | 9+ | rootless Podman + rootless Quadlets |
+
+CentOS 7 and RHEL-family 7/8 are unsupported.
+
+## Quick install
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/openclaw/openclaw-ansible/main/install.sh | bash
 ```
 
-## Manual Installation
+## Manual installation
 
 ### Prerequisites
+
+Debian/Ubuntu:
 
 ```bash
 sudo apt update
 sudo apt install -y ansible git
 ```
 
-### Clone and Run
+Fedora/RHEL family:
+
+```bash
+sudo dnf install -y ansible git
+```
+
+### Clone and run
 
 ```bash
 git clone https://github.com/openclaw/openclaw-ansible.git
 cd openclaw-ansible
-
-# Install Ansible collections
 ansible-galaxy collection install -r requirements.yml
-
-# Run playbook
 ansible-playbook playbook.yml --ask-become-pass
 ```
 
-## Post-Installation
+## What the playbook installs
 
-### 1. Connect to Tailscale
+Debian/Ubuntu:
+
+- UFW firewall
+- fail2ban
+- unattended-upgrades
+- Docker CE + Compose V2
+- Node.js + pnpm
+- OpenClaw host CLI and state directories
+
+Fedora/RHEL family:
+
+- firewalld
+- rootless Podman dependencies: `podman`, `slirp4netns`, `fuse-overlayfs`, `shadow-utils`
+- SELinux support packages: `container-selinux`, `policycoreutils-python-utils`, `python3-libselinux`
+- rootless user setup: `/etc/subuid`, `/etc/subgid`, and lingering
+- rootless Quadlet at `/home/openclaw/.config/containers/systemd/openclaw.container`
+- Node.js + pnpm
+- OpenClaw host CLI and state directories
+
+## Post-install setup
+
+### Debian/Ubuntu
+
+Switch to the OpenClaw user:
 
 ```bash
-# Interactive login
-sudo tailscale up
-
-# Or with auth key for automation
-sudo tailscale up --authkey tskey-auth-xxxxx
-
-# Check status
-sudo tailscale status
+sudo su - openclaw
 ```
 
-Get auth keys from: https://login.tailscale.com/admin/settings/keys
-
-### 2. Configure OpenClaw
+Run onboarding:
 
 ```bash
-# Edit config
-sudo nano /home/openclaw/.openclaw/config.yml
-
-# Key settings to configure:
-# - provider: whatsapp/telegram/signal
-# - phone: your number
-# - ai.provider: anthropic/openai
-# - ai.model: claude-3-5-sonnet-20241022
+openclaw onboard --install-daemon
 ```
 
-### 3. Login to Provider
+Then manage the daemon with the OpenClaw CLI:
 
 ```bash
-# Login (will prompt for QR code or phone verification)
-sudo docker exec -it openclaw openclaw login
-
-# Check connection
-sudo docker logs -f openclaw
+openclaw status
+openclaw logs
+openclaw daemon restart
 ```
 
-## Service Management
+### Fedora/RHEL family
 
-### Systemd Commands
+Switch to the OpenClaw user:
 
 ```bash
-# Start/stop/restart
-sudo systemctl start openclaw
-sudo systemctl stop openclaw
-sudo systemctl restart openclaw
-
-# View status
-sudo systemctl status openclaw
-
-# Enable/disable auto-start
-sudo systemctl enable openclaw
-sudo systemctl disable openclaw
+sudo su - openclaw
 ```
 
-### Docker Commands
+The playbook creates and starts the rootless Quadlet service. Check it with:
 
 ```bash
-# View logs
-sudo docker logs openclaw
-sudo docker logs -f openclaw  # follow
-
-# Shell access
-sudo docker exec -it openclaw bash
-
-# Restart container
-sudo docker restart openclaw
-
-# Check status
-sudo docker compose -f /opt/openclaw/docker-compose.yml ps
+loginctl show-user openclaw
+systemctl --user status openclaw.service
+journalctl --user -u openclaw.service -f
 ```
 
-### Firewall Management
+Provider login and configuration still run as the `openclaw` user:
 
 ```bash
-# View UFW status
+openclaw providers login
+openclaw configure
+```
+
+## Firewall management
+
+Debian/Ubuntu:
+
+```bash
 sudo ufw status verbose
-
-# Add custom rule
-sudo ufw allow 8080/tcp comment 'Custom service'
-sudo ufw reload
-
-# View Docker isolation
 sudo iptables -L DOCKER-USER -n -v
 ```
 
+Fedora/RHEL family:
+
+```bash
+sudo firewall-cmd --state
+sudo firewall-cmd --list-all
+```
+
+Only SSH and optional Tailscale should be exposed publicly by default.
+
+## Rootless Podman operations
+
+Run these as the `openclaw` user:
+
+```bash
+systemctl --user status openclaw.service
+systemctl --user restart openclaw.service
+journalctl --user -u openclaw.service -f
+podman ps
+podman logs -f openclaw
+```
+
+Quadlet location:
+
+```text
+/home/openclaw/.config/containers/systemd/openclaw.container
+```
+
+The installer never writes OpenClaw Quadlets to system Quadlet directories and never manages rootful Podman services.
+
 ## Accessing OpenClaw
 
-OpenClaw's web interface runs on port 3000 (localhost only).
-
-### Via Tailscale (Recommended)
+OpenClaw binds to localhost by default. Use an SSH tunnel from your workstation:
 
 ```bash
-# After connecting Tailscale, browse to:
-http://TAILSCALE_IP:3000
+ssh -L 3000:localhost:3000 user@gateway-host
 ```
 
-Wait, port 3000 is bound to localhost, so this won't work directly. Need to update the compose file or use SSH tunnel.
-
-### Via SSH Tunnel
-
-```bash
-ssh -L 3000:localhost:3000 user@server
-# Then browse to: http://localhost:3000
-```
+Then browse to `http://localhost:3000`.
 
 ## Verification
 
-Run the complete [post-install security verification](security.md#verification). It includes every command, the expected healthy result, and notes about output that varies by host.
+Run the complete [post-install security verification](security.md#verification). It includes every command, the expected healthy result, and notes about host-specific output.
 
 At minimum, confirm:
 
-- UFW is active with incoming and routed traffic denied by default.
-- The `sshd` fail2ban jail is enabled.
+- The firewall is active.
 - OpenClaw listens on `127.0.0.1`, not `0.0.0.0`.
-- The `DOCKER-USER` chain drops externally routed container traffic.
-- An external TCP scan exposes only the configured SSH port.
-- A published test container works locally but cannot be reached externally.
-- Tailscale is connected when enabled, and unattended upgrades are active.
+- An external TCP scan exposes only SSH.
+- Debian/Ubuntu: the `DOCKER-USER` chain drops externally routed container traffic.
+- Fedora/RHEL family: Podman reports rootless mode as the `openclaw` user.
+- Fedora/RHEL family: Quadlets are under `/home/openclaw/.config/containers/systemd/` only.
+- Tailscale is connected when enabled.
 
 ## Uninstall
 
-```bash
-# Stop services
-sudo systemctl stop openclaw
-sudo systemctl disable openclaw
-sudo tailscale down
+Debian/Ubuntu container/runtime cleanup:
 
-# Remove containers and data
-sudo docker compose -f /opt/openclaw/docker-compose.yml down
+```bash
+sudo tailscale down
 sudo rm -rf /opt/openclaw
 sudo rm -rf /home/openclaw/.openclaw
-sudo rm /etc/systemd/system/openclaw.service
-sudo systemctl daemon-reload
-
-# Remove packages (optional)
 sudo apt remove --purge tailscale docker-ce docker-ce-cli containerd.io docker-compose-plugin nodejs
-
-# Remove user (optional)
-sudo userdel -r openclaw
-
-# Reset firewall (optional)
 sudo ufw disable
 sudo ufw --force reset
 ```
 
-## Advanced Configuration
-
-### Custom Port
-
-Edit `/opt/openclaw/docker-compose.yml`:
-
-```yaml
-ports:
-  - "127.0.0.1:3001:3000"  # Change 3001 to desired port
-```
-
-Then restart:
-```bash
-sudo systemctl restart openclaw
-```
-
-### Environment Variables
-
-Add to `/opt/openclaw/docker-compose.yml`:
-
-```yaml
-environment:
-  - NODE_ENV=production
-  - ANTHROPIC_API_KEY=sk-ant-xxx
-  - DEBUG=openclaw:*
-```
-
-### Volume Mounts
-
-Add additional volumes in docker-compose.yml:
-
-```yaml
-volumes:
-  - /home/openclaw/.openclaw:/home/openclaw/.openclaw
-  - /path/to/custom:/custom
-```
-
-## Automation
-
-### Unattended Install
+Fedora/RHEL-family rootless Quadlet cleanup:
 
 ```bash
-# Set Tailscale auth key in playbook vars
-ansible-playbook playbook.yml \
-  --ask-become-pass \
-  -e "tailscale_authkey=tskey-auth-xxxxx"
+sudo su - openclaw
+systemctl --user disable --now openclaw.service
+rm -f ~/.config/containers/systemd/openclaw.container
+systemctl --user daemon-reload
+podman rm -f openclaw
+exit
+command -v tailscale >/dev/null 2>&1 && sudo tailscale down
+sudo rm -rf /home/openclaw/.openclaw
 ```
 
-### CI/CD Integration
+Remove the user only after preserving any data you need:
 
-```yaml
-# Example GitHub Actions
-- name: Deploy OpenClaw
-  run: |
-    ansible-playbook playbook.yml \
-      -e "tailscale_authkey=${{ secrets.TAILSCALE_KEY }}" \
-      --become
+```bash
+sudo loginctl disable-linger openclaw
+sudo loginctl terminate-user openclaw
+sudo rm -f /etc/sudoers.d/openclaw
+sudo userdel -r openclaw
 ```

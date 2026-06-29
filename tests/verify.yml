@@ -13,10 +13,17 @@
       ansible.builtin.command: "id {{ openclaw_user }}"
       changed_when: false
 
-    - name: Verify critical packages installed
+    - name: Verify critical packages installed (Debian family)
       ansible.builtin.command: "dpkg -s {{ item }}"
       loop: [git, curl, vim, jq, tmux, tree, htop, sudo]
       changed_when: false
+      when: ansible_os_family == 'Debian'
+
+    - name: Verify critical packages installed (RedHat family)
+      ansible.builtin.command: "rpm -q {{ item }}"
+      loop: [git, curl, vim-enhanced, jq, tmux, tree, sudo, podman, firewalld]
+      changed_when: false
+      when: ansible_os_family == 'RedHat'
 
     - name: Verify Node.js installed
       ansible.builtin.command: node --version
@@ -63,7 +70,7 @@
 
     - name: Verify global vim config exists
       ansible.builtin.stat:
-        path: /etc/vim/vimrc.local
+        path: "{{ '/etc/vimrc.local' if ansible_os_family == 'RedHat' else '/etc/vim/vimrc.local' }}"
       register: vimrc
     - ansible.builtin.assert:
         that: vimrc.stat.exists

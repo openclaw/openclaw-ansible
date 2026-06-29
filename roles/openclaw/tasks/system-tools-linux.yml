@@ -3,45 +3,7 @@
 
 - name: Install essential system tools (Linux - apt)
   ansible.builtin.apt:
-    name:
-      # Editors
-      - vim
-      - nano
-      # Version control
-      - git
-      - git-lfs
-      # Network tools
-      - curl
-      - wget
-      - netcat-openbsd
-      - net-tools
-      - dnsutils
-      - iputils-ping
-      - traceroute
-      - tcpdump
-      - nmap
-      - socat
-      - telnet
-      # Debugging tools
-      - strace
-      - lsof
-      - gdb
-      - htop
-      - iotop
-      - iftop
-      - sysstat
-      - procps
-      # System utilities
-      - tmux
-      - tree
-      - jq
-      - unzip
-      - rsync
-      - less
-      - sudo
-      # Build essentials for development
-      - build-essential
-      - file
+    name: "{{ openclaw_system_packages }}"
     state: present
     update_cache: true
 

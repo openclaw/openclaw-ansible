@@ -1,0 +1,16 @@
+---
+# Linux-specific system tools installation (RedHat family - dnf)
+
+- name: Install essential system tools (RedHat family - dnf)
+  ansible.builtin.dnf:
+    name: "{{ openclaw_system_packages }}"
+    state: present
+    update_cache: true
+
+- name: Deploy global vim configuration (RedHat family)
+  ansible.builtin.template:
+    src: vimrc.j2
+    dest: /etc/vimrc.local
+    owner: root
+    group: root
+    mode: '0644'
