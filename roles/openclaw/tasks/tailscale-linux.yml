@@ -44,6 +44,27 @@
   changed_when: false
   failed_when: false
 
+- name: Parse Tailscale backend state
+  ansible.builtin.set_fact:
+    tailscale_backend_state: >-
+      {{ (tailscale_status_linux.stdout | from_json).BackendState
+         | default('NoState') }}
+  when: tailscale_status_linux.rc == 0
+
+- name: Set backend state when tailscaled is unreachable
+  ansible.builtin.set_fact:
+    tailscale_backend_state: "NoState"
+  when: tailscale_status_linux.rc != 0
+
+- name: Auto-connect Tailscale with auth key
+  ansible.builtin.command: tailscale up --authkey {{ tailscale_authkey }}
+  register: tailscale_connect
+  changed_when: tailscale_connect.rc == 0
+  no_log: true
+  when:
+    - tailscale_backend_state != 'Running'
+    - tailscale_authkey | default('') | length > 0
+
 - name: Display Tailscale auth URL if not connected (Linux)
   ansible.builtin.debug:
     msg:
@@ -58,4 +79,9 @@
       - "sudo tailscale up --authkey tskey-auth-xxxxx"
       - ""
       - "Get auth key from: https://login.tailscale.com/admin/settings/keys"
-  when: tailscale_status_linux.rc != 0
+      - ""
+      - "To allow the openclaw user to run tailscale serve:"
+      - "Run: sudo tailscale set --operator={{ openclaw_user }}"
+  when:
+    - tailscale_backend_state != 'Running'
+    - tailscale_authkey | default('') | length == 0
