@@ -65,12 +65,6 @@
     - tailscale_backend_state != 'Running'
     - tailscale_authkey | default('') | length > 0
 
-- name: Set Tailscale operator to openclaw user
-  ansible.builtin.command: tailscale set --operator={{ openclaw_user }}
-  register: tailscale_set_operator
-  changed_when: tailscale_set_operator.rc == 0
-  when: tailscale_authkey | default('') | length > 0
-
 - name: Display Tailscale auth URL if not connected (Linux)
   ansible.builtin.debug:
     msg:

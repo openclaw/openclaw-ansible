@@ -84,7 +84,7 @@
       {{ openclaw_user }} ALL=(ALL) NOPASSWD: /usr/bin/tailscale version
       {{ openclaw_user }} ALL=(ALL) NOPASSWD: /usr/bin/tailscale ping *
       {{ openclaw_user }} ALL=(ALL) NOPASSWD: /usr/bin/tailscale whois *
-      {{ openclaw_user }} ALL=(ALL) NOPASSWD: /usr/bin/tailscale set --operator=*
+      {{ openclaw_user }} ALL=(ALL) NOPASSWD: /usr/bin/tailscale set --operator={{ openclaw_user }}
       {{ openclaw_user }} ALL=(ALL) NOPASSWD: /usr/bin/tailscale serve *
 
       # Journal access - openclaw logs only
