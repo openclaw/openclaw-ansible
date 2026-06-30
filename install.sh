@@ -64,7 +64,7 @@ if ! command -v ansible-playbook &> /dev/null; then
         $SUDO apt-get update -qq
         $SUDO apt-get install -y ansible git
     else
-        $SUDO $PKG_INSTALL install -y ansible git
+        $SUDO $PKG_INSTALL install -y ansible-core git
     fi
     echo -e "${GREEN}✓ Ansible and git installed${NC}"
 else

@@ -30,25 +30,79 @@
       Use Fedora 38+ or a RHEL-family 9+ distribution with a current Podman package.
     success_msg: "Podman {{ openclaw_podman_version_installed }} supports Quadlets."
 
+- name: Check for existing subuid allocation for openclaw user
+  ansible.builtin.shell:
+    cmd: "grep -E '^{{ openclaw_user }}:' /etc/subuid || true"
+    executable: /bin/bash
+  register: openclaw_existing_subuid
+  changed_when: false
+
+- name: Check for existing subgid allocation for openclaw user
+  ansible.builtin.shell:
+    cmd: "grep -E '^{{ openclaw_user }}:' /etc/subgid || true"
+    executable: /bin/bash
+  register: openclaw_existing_subgid
+  changed_when: false
+
+- name: Find highest allocated subuid end to avoid overlap
+  ansible.builtin.shell:
+    cmd: |
+      set -o pipefail
+      awk -F: '{print $2+$3}' /etc/subuid 2>/dev/null | sort -n | tail -1 || echo 0
+    executable: /bin/bash
+  register: openclaw_subuid_max
+  changed_when: false
+  when: openclaw_existing_subuid.stdout == ''
+
+- name: Find highest allocated subgid end to avoid overlap
+  ansible.builtin.shell:
+    cmd: |
+      set -o pipefail
+      awk -F: '{print $2+$3}' /etc/subgid 2>/dev/null | sort -n | tail -1 || echo 0
+    executable: /bin/bash
+  register: openclaw_subgid_max
+  changed_when: false
+  when: openclaw_existing_subgid.stdout == ''
+
+- name: Compute safe subuid start (above existing allocations)
+  ansible.builtin.set_fact:
+    openclaw_computed_subuid_start: >-
+      {{
+        [openclaw_podman_subuid_start, (openclaw_subuid_max.stdout | int)]
+        | max
+      }}
+  when: openclaw_existing_subuid.stdout == ''
+
+- name: Compute safe subgid start (above existing allocations)
+  ansible.builtin.set_fact:
+    openclaw_computed_subgid_start: >-
+      {{
+        [openclaw_podman_subgid_start, (openclaw_subgid_max.stdout | int)]
+        | max
+      }}
+  when: openclaw_existing_subgid.stdout == ''
+
 - name: Ensure subuid range for rootless Podman user
   ansible.builtin.lineinfile:
     path: /etc/subuid
     regexp: "^{{ openclaw_user }}:"
-    line: "{{ openclaw_user }}:{{ openclaw_podman_subuid_start }}:{{ openclaw_podman_subid_count }}"
+    line: "{{ openclaw_user }}:{{ openclaw_computed_subuid_start | default(openclaw_podman_subuid_start) }}:{{ openclaw_podman_subid_count }}"
     create: true
     owner: root
     group: root
     mode: '0644'
+  when: openclaw_existing_subuid.stdout == ''
 
 - name: Ensure subgid range for rootless Podman user
   ansible.builtin.lineinfile:
     path: /etc/subgid
     regexp: "^{{ openclaw_user }}:"
-    line: "{{ openclaw_user }}:{{ openclaw_podman_subgid_start }}:{{ openclaw_podman_subid_count }}"
+    line: "{{ openclaw_user }}:{{ openclaw_computed_subgid_start | default(openclaw_podman_subgid_start) }}:{{ openclaw_podman_subid_count }}"
     create: true
     owner: root
     group: root
     mode: '0644'
+  when: openclaw_existing_subgid.stdout == ''
 
 - name: Check lingering state for rootless Podman user
   ansible.builtin.stat:

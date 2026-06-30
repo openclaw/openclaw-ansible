@@ -27,6 +27,7 @@
           - "'podman.service' not in openclaw_static_content"
           - "'podman.socket' not in openclaw_static_content"
           - "'systemctl --user daemon-reload' in openclaw_static_content"
+          - "'systemctl --user enable' in openclaw_static_content"
           - "'systemctl --user is-active --quiet' in openclaw_static_content"
           - "'become_user:' in openclaw_static_content"
           - "'openclaw_user' in openclaw_static_content"

@@ -107,6 +107,15 @@
   changed_when: false
   failed_when: false
 
+- name: Enable rootless OpenClaw Quadlet service (persist across reboot)
+  ansible.builtin.command: "systemctl --user enable {{ openclaw_quadlet_service_name }}"
+  become: true
+  become_user: "{{ openclaw_user }}"
+  environment:
+    HOME: "{{ openclaw_home }}"
+    XDG_RUNTIME_DIR: "/run/user/{{ openclaw_uid_value }}"
+  changed_when: openclaw_quadlet_template.changed
+
 - name: Start or restart rootless OpenClaw Quadlet service
   ansible.builtin.command: >-
     systemctl --user

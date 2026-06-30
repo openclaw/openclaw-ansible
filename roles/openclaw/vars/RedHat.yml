@@ -1,7 +1,7 @@
 ---
 openclaw_container_runtime: podman
 openclaw_podman_mode: rootless
-openclaw_podman_min_version: "4.4.0"
+openclaw_podman_min_version: "4.5.0"
 openclaw_firewall_backend: firewalld
 openclaw_linux_package_manager: dnf
 openclaw_quadlet_dir: "{{ openclaw_home }}/.config/containers/systemd"

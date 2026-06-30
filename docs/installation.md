@@ -111,12 +111,11 @@ systemctl --user status openclaw.service
 journalctl --user -u openclaw.service -f
 ```
 
-Provider login and configuration still run as the `openclaw` user:
-
-```bash
-openclaw providers login
-openclaw configure
-```
+On Fedora/RHEL-family installs there is no host `openclaw` binary — the gateway
+runs exclusively inside the rootless Podman container. Provider configuration
+is applied through the container environment file and `openclaw.json` written
+by the installer under `~/.openclaw/`. To interact with the running gateway,
+use its HTTP API or the OpenClaw web UI at `http://127.0.0.1:18789`.
 
 ## Firewall management
 
