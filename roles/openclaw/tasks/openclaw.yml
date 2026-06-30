@@ -83,9 +83,24 @@
         CHANGED=1
       fi
       exit $CHANGED
+    chdir: "{{ openclaw_home }}"
     executable: /bin/bash
   become: true
   become_user: "{{ openclaw_user }}"
+  environment:
+    PNPM_HOME: "{{ openclaw_home }}/.local/share/pnpm"
+    PATH: >-
+      {{
+        [
+          openclaw_home ~ '/.local/bin',
+          openclaw_home ~ '/.local/share/pnpm/bin',
+          openclaw_home ~ '/.local/share/pnpm',
+          '/usr/local/bin',
+          '/usr/bin',
+          '/bin'
+        ] | join(':')
+      }}
+    HOME: "{{ openclaw_home }}"
   register: pnpm_config_result
   changed_when: pnpm_config_result.rc == 1
   failed_when: pnpm_config_result.rc > 1
@@ -97,11 +112,15 @@
 # Include appropriate installation method based on mode
 - name: Include release installation (pnpm install -g)
   ansible.builtin.include_tasks: openclaw-release.yml
-  when: openclaw_install_mode == "release"
+  when:
+    - openclaw_install_mode == "release"
+    - openclaw_container_runtime == "docker"
 
 - name: Include development installation (git clone + build + link)
   ansible.builtin.include_tasks: openclaw-development.yml
-  when: openclaw_install_mode == "development"
+  when:
+    - openclaw_install_mode == "development"
+    - openclaw_container_runtime == "docker"
 
 - name: Configure .bashrc for openclaw user (base config)
   ansible.builtin.blockinfile:
@@ -134,3 +153,23 @@
       - Create configuration files (~/.openclaw/openclaw.json)
       - Guide you through provider setup
       - Install and start the daemon service automatically
+  when: openclaw_container_runtime == "docker"
+
+- name: Display rootless Podman configuration note
+  ansible.builtin.debug:
+    msg: |
+      OpenClaw state directories are ready for the rootless Podman Quadlet.
+      The container service will be installed and started by the RedHat-family
+      Quadlet tasks.
+
+      The OpenClaw gateway runs as a rootless Podman container — there is no
+      host openclaw binary. Manage the service as the openclaw user:
+
+        sudo su - {{ openclaw_user }}
+        systemctl --user status openclaw.service
+        journalctl --user -u openclaw.service -n 100
+
+      To upgrade, pull the new image and restart:
+        podman pull {{ openclaw_podman_image }}
+        systemctl --user restart openclaw.service
+  when: openclaw_container_runtime == "podman"

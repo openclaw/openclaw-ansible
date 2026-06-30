@@ -1,160 +1,123 @@
 ---
 title: Troubleshooting
-description: Common issues and solutions
+description: Common OpenClaw Ansible installer failures and checks
 ---
 
 # Troubleshooting
 
-## Container Can't Reach Internet
+Start with the platform-specific checks below. Replace `openclaw` with your configured app user if you changed `openclaw_user`.
 
-**Symptom**: OpenClaw can't connect to WhatsApp/Telegram
+## Firewall blocks access
 
-**Check**:
+Only SSH and optional Tailscale are exposed publicly by default. Use an SSH tunnel for the local gateway port:
+
 ```bash
-# Test from container
-sudo docker exec openclaw ping -c 3 8.8.8.8
-
-# Check UFW allows outbound
-sudo ufw status verbose | grep OUT
+ssh -L 3000:localhost:3000 user@gateway-host
 ```
 
-**Solution**:
+Debian/Ubuntu firewall checks:
+
 ```bash
-# Verify DOCKER-USER allows established connections
-sudo iptables -L DOCKER-USER -n -v
-
-# Restart Docker + Firewall
-sudo systemctl restart docker
-sudo ufw reload
-sudo systemctl restart openclaw
-```
-
-## Port Already in Use
-
-**Symptom**: Port 3000 conflict
-
-**Solution**:
-```bash
-# Find what's using port 3000
-sudo ss -tlnp | grep 3000
-
-# Change OpenClaw port
-sudo nano /opt/openclaw/docker-compose.yml
-# Change: "127.0.0.1:3001:3000"
-
-sudo systemctl restart openclaw
-```
-
-## Firewall Lockout
-
-**Symptom**: Can't SSH after installation
-
-**Solution** (via console/rescue mode):
-```bash
-# Disable UFW temporarily
-sudo ufw disable
-
-# Check SSH rule exists
-sudo ufw status numbered
-
-# Re-add SSH rule
-sudo ufw allow 22/tcp
-
-# Re-enable
-sudo ufw enable
-```
-
-## Container Won't Start
-
-**Check logs**:
-```bash
-# Systemd logs
-sudo journalctl -u openclaw -n 50
-
-# Docker logs
-sudo docker logs openclaw
-
-# Compose status
-sudo docker compose -f /opt/openclaw/docker-compose.yml ps
-```
-
-**Common fixes**:
-```bash
-# Rebuild image
-cd /opt/openclaw
-sudo docker compose build --no-cache
-sudo systemctl restart openclaw
-
-# Check permissions
-sudo chown -R openclaw:openclaw /home/openclaw/.openclaw
-```
-
-## Verify Docker Isolation
-
-**Test that external ports are blocked**:
-```bash
-# Start test container
-sudo docker run -d -p 80:80 --name test-nginx nginx
-
-# From EXTERNAL machine (should fail):
-curl http://YOUR_SERVER_IP:80
-
-# From SERVER (should work):
-curl http://localhost:80
-
-# Cleanup
-sudo docker rm -f test-nginx
-```
-
-## UFW Status Shows Inactive
-
-**Fix**:
-```bash
-# Enable UFW
-sudo ufw enable
-
-# Reload rules
-sudo ufw reload
-
-# Verify
 sudo ufw status verbose
-```
-## Ansible Playbook Fails
-
-### Failed to set permissions on temporary files (Become Issue)
-
-**Symptom**: `fatal: [host]: FAILED! => {"msg": "Failed to set permissions on the temporary files Ansible needs to create when becoming an unprivileged user..."}`
-
-**Cause**: This happens when connecting as an unprivileged user (e.g., `ansible`) and using `become_user` to switch to another unprivileged user (e.g., `openclaw`). Ansible struggles to share temporary module files between them if the filesystem doesn't support POSIX ACLs.
-
-**Solution**:
-Enable **Ansible Pipelining** in your `ansible.cfg`. This executes modules via stdin without creating temporary files.
-
-```ini
-[defaults]
-pipelining = True
+sudo iptables -L DOCKER-USER -n -v
 ```
 
-Alternatively, if you cannot use pipelining, you can allow world-readable temporary files (less secure):
-```ini
-[defaults]
-allow_world_readable_tmpfiles = True
+Fedora/RHEL-family firewall checks:
+
+```bash
+sudo firewall-cmd --state
+sudo firewall-cmd --list-all
 ```
 
-### Collection missing
-...
+Expected: SSH is allowed. Tailscale UDP `41641` is allowed only when `tailscale_enabled=true`.
+
+## RedHat-family Quadlet does not start
+
+Run these as the `openclaw` user:
+
+```bash
+loginctl show-user openclaw
+systemctl --user daemon-reload
+systemctl --user status openclaw.service
+journalctl --user -u openclaw.service -n 100
+podman info --format '{{.Host.Security.Rootless}}'
+```
+
+Expected:
+
+- `Linger=yes`
+- `podman info` prints `true`
+- the Quadlet exists at `/home/openclaw/.config/containers/systemd/openclaw.container`
+
+If rootless Podman cannot start, fix the rootless setup. Do not switch to rootful Podman; the installer intentionally has no rootful fallback.
+
+## RedHat-family unsupported version failure
+
+The installer rejects CentOS 7 and RHEL-family 7/8 because rootless Quadlets require newer Podman support. Use Fedora 38+ or a RHEL-family 9+ host.
+
+## SELinux blocks Podman bind mounts
+
+Do not disable SELinux. The generated Quadlet uses `:Z` labels for private OpenClaw state. Check AVC denials with your normal SELinux tooling, then verify the bind-mounted paths are owned by the `openclaw` user:
+
+```bash
+sudo ls -ld /home/openclaw/.openclaw /home/openclaw/.openclaw/workspace
+```
+
+## Debian/Ubuntu Docker sandbox issues
+
+```bash
+sudo systemctl status docker
+sudo docker images | grep openclaw-sandbox
+sudo iptables -L DOCKER-USER -n -v
+```
+
+Build the sandbox image from a source checkout when needed:
+
+```bash
+cd /opt/openclaw/openclaw
+sudo -u openclaw ./scripts/sandbox-setup.sh
+```
+
+For npm installs without a source checkout, see the OpenClaw sandboxing documentation.
+
+## Tailscale is installed but disconnected
+
+```bash
+sudo tailscale status
+sudo tailscale up
+```
+
+For unattended setup, pass a Tailscale auth key through the documented Ansible variable and keep it out of logs and shell history.
+
+## Node.js or pnpm missing
+
+Check the installed versions:
+
+```bash
+node --version
+pnpm --version
+```
+
+Re-run the playbook after fixing repository or package-manager errors:
+
+```bash
+./run-playbook.sh
+```
+
+## Ansible collection errors
+
+Install required collections before running playbooks directly:
+
 ```bash
 ansible-galaxy collection install -r requirements.yml
 ```
 
-**Permission denied**:
+## Verification
+
+Run the security verification checklist after any fix:
+
 ```bash
-# Run with --ask-become-pass
-ansible-playbook playbook.yml --ask-become-pass
+ansible-playbook tests/verify-redhat-static.yml
 ```
 
-**Docker daemon not running**:
-```bash
-sudo systemctl start docker
-# Re-run playbook
-```
+For full host checks, follow `docs/security.md#verification`.

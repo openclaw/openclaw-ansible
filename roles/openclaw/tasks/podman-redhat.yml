@@ -1,0 +1,141 @@
+---
+# RedHat-family rootless Podman setup. Rootful Podman units and system Quadlet
+# directories are intentionally not managed here.
+
+- name: Verify systemd user tooling exists for rootless Quadlets
+  ansible.builtin.command: "{{ item }} --version"
+  loop:
+    - systemctl
+    - loginctl
+  register: openclaw_systemd_tooling
+  changed_when: false
+
+- name: Check installed Podman version
+  ansible.builtin.command: podman --version
+  register: openclaw_podman_version_cmd
+  changed_when: false
+
+- name: Parse installed Podman version
+  ansible.builtin.set_fact:
+    openclaw_podman_version_installed: >-
+      {{ openclaw_podman_version_cmd.stdout | regex_search('[0-9]+\.[0-9]+\.[0-9]+') }}
+
+- name: Fail if Podman does not support Quadlets
+  ansible.builtin.assert:
+    that:
+      - openclaw_podman_version_installed is version(openclaw_podman_min_version, '>=')
+    fail_msg: >-
+      Installed Podman {{ openclaw_podman_version_installed | default('unknown') }} is too old.
+      Rootless Quadlets require Podman {{ openclaw_podman_min_version }} or newer.
+      Use Fedora 38+ or a RHEL-family 9+ distribution with a current Podman package.
+    success_msg: "Podman {{ openclaw_podman_version_installed }} supports Quadlets."
+
+- name: Check for existing subuid allocation for openclaw user
+  ansible.builtin.shell:
+    cmd: "grep -E '^{{ openclaw_user }}:' /etc/subuid || true"
+    executable: /bin/bash
+  register: openclaw_existing_subuid
+  changed_when: false
+
+- name: Check for existing subgid allocation for openclaw user
+  ansible.builtin.shell:
+    cmd: "grep -E '^{{ openclaw_user }}:' /etc/subgid || true"
+    executable: /bin/bash
+  register: openclaw_existing_subgid
+  changed_when: false
+
+- name: Find highest allocated subuid end to avoid overlap
+  ansible.builtin.shell:
+    cmd: |
+      set -o pipefail
+      awk -F: '{print $2+$3}' /etc/subuid 2>/dev/null | sort -n | tail -1 || echo 0
+    executable: /bin/bash
+  register: openclaw_subuid_max
+  changed_when: false
+  when: openclaw_existing_subuid.stdout == ''
+
+- name: Find highest allocated subgid end to avoid overlap
+  ansible.builtin.shell:
+    cmd: |
+      set -o pipefail
+      awk -F: '{print $2+$3}' /etc/subgid 2>/dev/null | sort -n | tail -1 || echo 0
+    executable: /bin/bash
+  register: openclaw_subgid_max
+  changed_when: false
+  when: openclaw_existing_subgid.stdout == ''
+
+- name: Compute safe subuid start (above existing allocations)
+  ansible.builtin.set_fact:
+    openclaw_computed_subuid_start: >-
+      {{
+        [openclaw_podman_subuid_start, (openclaw_subuid_max.stdout | int)]
+        | max
+      }}
+  when: openclaw_existing_subuid.stdout == ''
+
+- name: Compute safe subgid start (above existing allocations)
+  ansible.builtin.set_fact:
+    openclaw_computed_subgid_start: >-
+      {{
+        [openclaw_podman_subgid_start, (openclaw_subgid_max.stdout | int)]
+        | max
+      }}
+  when: openclaw_existing_subgid.stdout == ''
+
+- name: Ensure subuid range for rootless Podman user
+  ansible.builtin.lineinfile:
+    path: /etc/subuid
+    regexp: "^{{ openclaw_user }}:"
+    line: "{{ openclaw_user }}:{{ openclaw_computed_subuid_start | default(openclaw_podman_subuid_start) }}:{{ openclaw_podman_subid_count }}"
+    create: true
+    owner: root
+    group: root
+    mode: '0644'
+  when: openclaw_existing_subuid.stdout == ''
+
+- name: Ensure subgid range for rootless Podman user
+  ansible.builtin.lineinfile:
+    path: /etc/subgid
+    regexp: "^{{ openclaw_user }}:"
+    line: "{{ openclaw_user }}:{{ openclaw_computed_subgid_start | default(openclaw_podman_subgid_start) }}:{{ openclaw_podman_subid_count }}"
+    create: true
+    owner: root
+    group: root
+    mode: '0644'
+  when: openclaw_existing_subgid.stdout == ''
+
+- name: Check lingering state for rootless Podman user
+  ansible.builtin.stat:
+    path: "/var/lib/systemd/linger/{{ openclaw_user }}"
+  register: openclaw_linger_file
+
+- name: Enable lingering for rootless Podman user
+  ansible.builtin.command: "loginctl enable-linger {{ openclaw_user }}"
+  when: not openclaw_linger_file.stat.exists
+  changed_when: true
+
+- name: Start user systemd manager for rootless Podman user
+  ansible.builtin.systemd:
+    name: "user@{{ openclaw_uid_value }}.service"
+    state: started
+  when: openclaw_uid_value is defined
+
+- name: Verify Podman reports rootless mode as the OpenClaw user
+  ansible.builtin.command:
+    cmd: podman info --format '{{ "{{" }}.Host.Security.Rootless{{ "}}" }}'
+  become: true
+  become_user: "{{ openclaw_user }}"
+  environment:
+    HOME: "{{ openclaw_home }}"
+    XDG_RUNTIME_DIR: "/run/user/{{ openclaw_uid_value }}"
+  register: openclaw_podman_rootless_info
+  changed_when: false
+
+- name: Assert Podman is rootless for the OpenClaw user
+  ansible.builtin.assert:
+    that:
+      - openclaw_podman_rootless_info.stdout | trim == 'true'
+    fail_msg: >-
+      Podman did not report rootless mode for {{ openclaw_user }}. The installer
+      will not fall back to rootful Podman. Check subuid/subgid ranges, lingering,
+      and user systemd availability.

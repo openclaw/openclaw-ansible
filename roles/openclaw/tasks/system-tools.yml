@@ -1,8 +1,13 @@
 ---
 # Main system tools orchestration - Linux only
 
-- name: Include Linux system tools installation
+- name: Include Linux system tools installation (Debian family)
   ansible.builtin.include_tasks: system-tools-linux.yml
+  when: ansible_os_family == 'Debian'
+
+- name: Include Linux system tools installation (RedHat family)
+  ansible.builtin.include_tasks: system-tools-redhat.yml
+  when: ansible_os_family == 'RedHat'
 
 # Common tasks for all operating systems
 

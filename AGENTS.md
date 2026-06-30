@@ -2,186 +2,197 @@
 
 ## Project Overview
 
-Ansible playbook for automated, hardened OpenClaw installation on Debian/Ubuntu systems.
+Ansible playbook for automated, hardened OpenClaw installation on Linux servers.
+
+Supported platform families:
+
+- Debian/Ubuntu: UFW + Docker CE + Compose V2.
+- Fedora/RHEL family: firewalld + rootless Podman + rootless Quadlets only.
 
 ## Key Principles
 
-1. **Security First**: Firewall must be configured before Docker installation
-2. **One Command Install**: `curl | bash` should work out of the box
-3. **Localhost Only**: All container ports bind to 127.0.0.1
-4. **Defense in Depth**: UFW + DOCKER-USER + localhost binding + non-root container
+1. **Security First**: configure firewall and runtime isolation before exposing services.
+2. **One Command Install**: `curl | bash` should work on supported platforms.
+3. **Localhost Only**: container-published ports bind to `127.0.0.1` unless explicitly documented otherwise.
+4. **OS-Native Runtime**: Debian keeps Docker; RedHat-family uses rootless Podman only.
+5. **No Rootful Podman**: never implement or suggest rootful Podman fallback.
 
 ## Critical Components
 
 ### Task Order
-Docker must be installed **before** firewall configuration.
 
 Task order in `roles/openclaw/tasks/main.yml`:
+
 ```yaml
-- tailscale.yml  # VPN setup
-- user.yml       # Create system user
-- docker.yml     # Install Docker (creates /etc/docker)
-- firewall.yml   # Configure UFW + daemon.json (needs /etc/docker to exist)
-- nodejs.yml     # Node.js + pnpm
-- openclaw.yml   # Container setup
+- preflight.yml          # OS vars, support checks, rootless policy
+- system-tools.yml       # OS-family package map
+- tailscale-*.yml        # optional VPN setup
+- user.yml               # app user and user-systemd env
+- docker-linux.yml       # Debian/Ubuntu only
+- podman-redhat.yml      # RedHat-family rootless setup only
+- firewall-linux.yml     # Debian/Ubuntu UFW + DOCKER-USER
+- firewall-redhat.yml    # RedHat-family firewalld
+- nodejs.yml             # OS-family NodeSource setup
+- openclaw.yml           # OpenClaw install/state dirs
+- quadlet-redhat.yml     # RedHat-family rootless Quadlet only
 ```
 
-Reason: `firewall.yml` writes `/etc/docker/daemon.json` and restarts Docker service.
+### Debian/Ubuntu Runtime
 
-### DOCKER-USER Chain
-Located in `/etc/ufw/after.rules`. Uses dynamic interface detection (not hardcoded `eth0`).
+- Docker must be installed before Debian firewall configuration because `firewall-linux.yml` writes `/etc/docker/daemon.json` and restarts Docker.
+- DOCKER-USER rules live in `/etc/ufw/after.rules` and must use dynamic interface detection.
+- Never use `iptables: false` in Docker daemon config.
+- Keep Docker port bindings on `127.0.0.1`.
 
-**Never** use `iptables: false` in Docker daemon config - this would break container networking.
+### Fedora/RHEL Runtime
 
-### Port Binding
-Always use `127.0.0.1:HOST_PORT:CONTAINER_PORT` in docker-compose.yml, never `HOST_PORT:CONTAINER_PORT`.
+- Use `dnf`/`yum`-compatible packages and RedHat package names.
+- Use `firewalld`, not UFW.
+- Use `podman`, not Docker.
+- Rootless Podman only. Rootful Podman must fail fast.
+- Rootless Quadlets only under `/home/{{ openclaw_user }}/.config/containers/systemd/`.
+- Never write OpenClaw Quadlets under system Quadlet directories.
+- Manage services with `systemctl --user` as `{{ openclaw_user }}` and set `XDG_RUNTIME_DIR=/run/user/{{ openclaw_uid_value }}`.
+- Keep SELinux enabled. Use `:Z` labels for private OpenClaw bind mounts.
 
 ## Code Style
 
 ### Ansible
-- Use loops instead of repeated tasks
-- No `become_user` (playbook already runs as root)
-- Use `community.docker.docker_compose_v2` (not deprecated `docker_compose`)
-- Always specify collections in `requirements.yml`
+
+- Use loops instead of repeated tasks.
+- Prefer modules over shell/command when modules are safe.
+- Shell/command tasks need accurate `changed_when`.
+- Keep OS-specific behavior isolated by vars/tasks.
+- Always specify collections in `requirements.yml`.
 
 ### Docker
-- Multi-stage builds if needed
-- USER directive for non-root
-- Proper healthchecks (test the app, not just Node)
-- Use `docker compose` (V2) not `docker-compose` (V1)
-- No `version:` in compose files
 
-### Templates
-- Use variables for all paths/ports
-- Add comments explaining security decisions
-- Keep jinja2 logic simple
+- Debian/Ubuntu only.
+- Use `docker compose` V2, not deprecated `docker-compose` V1.
+- No `version:` in compose files.
+
+### Podman
+
+- RedHat-family only in this installer.
+- Use rootless Quadlet files.
+- Do not enable rootful `podman.service` or `podman.socket`.
+- Do not add a `docker` group on RedHat-family systems.
 
 ## Testing Checklist
 
 Before committing changes:
 
 ```bash
-# 1. Syntax check
 ansible-playbook playbook.yml --syntax-check
+ansible-playbook playbooks/deploy.yml --syntax-check
+ansible-playbook tests/verify.yml --syntax-check
+ansible-playbook tests/verify-redhat-static.yml --syntax-check
+ansible-playbook tests/verify-redhat-static.yml
+ansible-lint playbook.yml
+yamllint .
+```
 
-# 2. Dry run
-ansible-playbook playbook.yml --check
+Platform validation on disposable hosts:
 
-# 3. Full install (on test VM)
-curl -fsSL https://raw.githubusercontent.com/.../install.sh | bash
-
-# 4. Verify security
+```bash
+# Debian/Ubuntu
 sudo ufw status verbose
 sudo iptables -L DOCKER-USER -n
-sudo ss -tlnp  # Only SSH + localhost should listen
-
-# 5. External port scan
-nmap -p- TEST_SERVER_IP  # Only port 22 should be open
-
-# 6. Test isolation
+sudo ss -tlnp
 sudo docker run -p 80:80 nginx
-curl http://TEST_SERVER_IP:80  # Should fail
-curl http://localhost:80        # Should work
+
+# Fedora/RHEL family
+sudo firewall-cmd --state
+sudo firewall-cmd --list-all
+sudo su - openclaw
+loginctl show-user openclaw
+podman info --format '{{.Host.Security.Rootless}}'
+systemctl --user status openclaw.service
+journalctl --user -u openclaw.service -n 100
+test ! -e /etc/containers/systemd/openclaw.container
 ```
 
 ## Common Mistakes to Avoid
 
-1. ❌ Installing Docker before configuring firewall
-2. ❌ Using `0.0.0.0` port binding
-3. ❌ Hardcoding network interface names (use dynamic detection)
-4. ❌ Setting `iptables: false` in Docker daemon
-5. ❌ Running container as root
-6. ❌ Using deprecated `docker-compose` (V1)
-7. ❌ Forgetting to add collections to requirements.yml
+1. ❌ Regressing Debian/Ubuntu Docker + UFW behavior.
+2. ❌ Installing Docker or creating a `docker` group on RedHat-family systems.
+3. ❌ Using rootful Podman or adding rootful fallback.
+4. ❌ Writing Quadlets to system Quadlet directories.
+5. ❌ Running RedHat-family Quadlet commands with system-level `systemctl`.
+6. ❌ Disabling SELinux.
+7. ❌ Hardcoding network interface names.
+8. ❌ Using `0.0.0.0` port bindings.
 
 ## Documentation
 
-### User-Facing
-- **README.md**: Installation, quick start, basic management
-- **docs/**: Technical details, architecture, troubleshooting
+- **README.md**: installation, quick start, supported matrix.
+- **docs/**: architecture, security, troubleshooting.
+- **AGENTS.md**: this file.
 
-### Developer-Facing
-- **AGENTS.md**: This file - guidelines for AI agents/contributors
-- Code comments: Explain *why*, not *what*
-
-Keep docs concise. No progress logs, no refactoring summaries.
+Keep docs concise. No progress logs or refactoring summaries.
 
 ## File Locations
 
 ### Host System
-```
-/opt/openclaw/              # Installation files
-/home/openclaw/.openclaw/   # Config and data
-/etc/systemd/system/openclaw.service
-/etc/docker/daemon.json
-/etc/ufw/after.rules
+
+```text
+/opt/openclaw/                                      # Installation files when source mode uses it
+/home/openclaw/.openclaw/                          # Config and data
+/etc/docker/daemon.json                            # Debian/Ubuntu only
+/etc/ufw/after.rules                               # Debian/Ubuntu only
+/home/openclaw/.config/containers/systemd/         # RedHat-family rootless Quadlets
 ```
 
 ### Repository
-```
-roles/openclaw/
-├── tasks/       # Ansible tasks (order matters!)
-├── templates/   # Jinja2 configs
-├── defaults/    # Variables
-└── handlers/    # Service restart handlers
 
-docs/            # Technical documentation (frontmatter format)
-requirements.yml # Ansible Galaxy collections
+```text
+roles/openclaw/
+├── tasks/       # Ansible tasks
+├── templates/   # Jinja2 configs and Quadlets
+├── defaults/    # Shared defaults
+├── vars/        # OS-family variables
+└── handlers/    # Service restart handlers
 ```
 
 ## Security Notes
 
-### Why UFW + DOCKER-USER?
-Docker bypasses UFW by default. DOCKER-USER chain is evaluated first, allowing us to block before Docker sees the traffic.
+### Why UFW + DOCKER-USER on Debian/Ubuntu?
+
+Docker bypasses UFW by default. DOCKER-USER is evaluated first, allowing the installer to block forwarded traffic before Docker sees it.
+
+### Why firewalld + rootless Podman on RedHat-family systems?
+
+firewalld, SELinux, and rootless Podman are the native RedHat-family stack. Rootless Quadlets keep container lifecycle under the app user's systemd manager instead of a rootful daemon.
 
 ### Why Fail2ban?
-SSH is exposed to the internet. Fail2ban automatically bans IPs after 5 failed attempts for 1 hour.
 
-### Why Unattended-Upgrades?
-Security patches should be applied promptly. Automatic security-only updates reduce vulnerability windows.
+SSH is exposed to the internet. Fail2ban automatically bans IPs after repeated failed attempts on Debian/Ubuntu.
 
 ### Why Scoped Sudo?
-The openclaw user only needs to manage its own service and Tailscale. Full root access would be dangerous if the app is compromised.
 
-### Why Localhost Binding?
-Defense in depth. If DOCKER-USER fails, localhost binding prevents external access.
-
-### Why Non-Root Container?
-Least privilege. Limits damage if container is compromised.
-
-### Why Systemd?
-Clean lifecycle, auto-start, logging integration.
-
-### Known Limitations
-- **macOS**: Incomplete support (no launchd, basic firewall). Test thoroughly.
-- **IPv6**: Disabled in Docker. Review if your network uses IPv6.
-- **curl | bash**: Inherent risks. For production, clone and audit first.
+The `openclaw` user only needs limited service and Tailscale commands. Full root access would be dangerous if the app is compromised.
 
 ## Making Changes
 
 ### Adding a New Task
-1. Add to appropriate file in `roles/openclaw/tasks/`
-2. Update main.yml if new task file
-3. Test with `--check` first
-4. Verify idempotency (can run multiple times safely)
+
+1. Add to the appropriate OS-family task file.
+2. Update `roles/openclaw/tasks/main.yml` only if a new task file is needed.
+3. Add OS-family vars when package names or runtime behavior differ.
+4. Test with `--syntax-check` first.
+5. Verify idempotency on a disposable host.
 
 ### Changing Firewall Rules
-1. Test on disposable VM first
-2. Always keep SSH accessible
-3. Update `docs/security.md` with changes
-4. Verify with external port scan
 
-### Updating Docker Config
-1. Changes to `daemon.json.j2` trigger Docker restart (via handler)
-2. Test container networking after restart
-3. Verify DOCKER-USER chain still works
+1. Test on a disposable VM first.
+2. Always keep SSH accessible.
+3. Update `docs/security.md`.
+4. Verify with an external port scan.
 
-## Version Management
+### Updating Runtime Config
 
-- Use semantic versioning for releases
-- Tag releases in git
-- Update CHANGELOG.md with user-facing changes
-- No version numbers in code (use git tags)
+- Debian/Ubuntu: changes to `daemon.json.j2` trigger Docker restart.
+- RedHat-family: changes to `openclaw.container.j2` require user daemon reload and user service restart.
 
 ## Support Channels
 
