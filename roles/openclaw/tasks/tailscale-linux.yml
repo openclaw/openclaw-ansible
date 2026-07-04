@@ -65,6 +65,38 @@
     - tailscale_backend_state != 'Running'
     - tailscale_authkey | default('') | length > 0
 
+# Re-query after connect so later operator grant sees Running on first-run auth-key installs.
+- name: Refresh Tailscale backend state after auth-key auto-connect
+  ansible.builtin.command: tailscale status --json
+  register: tailscale_status_after_connect
+  changed_when: false
+  failed_when: false
+  when:
+    - tailscale_connect is defined
+    - not (tailscale_connect.skipped | default(false))
+    - (tailscale_connect.rc | default(1)) == 0
+
+- name: Update backend state fact after successful auth-key connect
+  ansible.builtin.set_fact:
+    tailscale_backend_state: >-
+      {{ (tailscale_status_after_connect.stdout | from_json).BackendState
+         | default('Running') }}
+  when:
+    - tailscale_status_after_connect is defined
+    - not (tailscale_status_after_connect.skipped | default(false))
+    - (tailscale_status_after_connect.rc | default(1)) == 0
+
+- name: Mark backend Running when connect succeeded but status refresh failed
+  ansible.builtin.set_fact:
+    tailscale_backend_state: "Running"
+  when:
+    - tailscale_connect is defined
+    - not (tailscale_connect.skipped | default(false))
+    - (tailscale_connect.rc | default(1)) == 0
+    - tailscale_status_after_connect is defined
+    - not (tailscale_status_after_connect.skipped | default(false))
+    - (tailscale_status_after_connect.rc | default(1)) != 0
+
 - name: Display Tailscale auth URL if not connected (Linux)
   ansible.builtin.debug:
     msg:
