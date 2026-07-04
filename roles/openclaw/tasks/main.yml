@@ -14,6 +14,9 @@
   register: tailscale_prefs
   changed_when: false
   failed_when: false
+  # prefs JSON can include private Tailscale config (node/network-lock keys).
+  # Keep it out of Ansible callback/CI logs (see PR review).
+  no_log: true
   when:
     - tailscale_enabled | bool
     - tailscale_backend_state | default('NoState') == 'Running'
