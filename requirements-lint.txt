@@ -1,3 +1,3 @@
-ansible-core==2.15.13
+ansible-core==2.16.19
 ansible-lint==6.22.2
 yamllint==1.37.1
