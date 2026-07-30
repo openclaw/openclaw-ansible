@@ -1,24 +1,43 @@
 ---
+- name: Include platform preflight tasks
+  ansible.builtin.include_tasks: preflight.yml
+
 - name: Include system tools installation tasks
   ansible.builtin.include_tasks: system-tools.yml
 
-- name: Include Tailscale installation tasks
+- name: Include Tailscale installation tasks (Debian family)
   ansible.builtin.include_tasks: tailscale-linux.yml
-  when: tailscale_enabled | bool
+  when: tailscale_enabled | bool and ansible_os_family == 'Debian'
+
+- name: Include Tailscale installation tasks (RedHat family)
+  ansible.builtin.include_tasks: tailscale-redhat.yml
+  when: tailscale_enabled | bool and ansible_os_family == 'RedHat'
 
 - name: Include user creation tasks
   ansible.builtin.include_tasks: user.yml
 
-- name: Include Docker installation tasks
+- name: Include Docker installation tasks (Debian family)
   ansible.builtin.include_tasks: docker-linux.yml
-  when: not ci_test
+  when: not ci_test and openclaw_container_runtime == 'docker'
 
-- name: Include firewall configuration tasks
+- name: Include rootless Podman setup tasks (RedHat family)
+  ansible.builtin.include_tasks: podman-redhat.yml
+  when: not ci_test and openclaw_container_runtime == 'podman'
+
+- name: Include firewall configuration tasks (Debian family)
   ansible.builtin.include_tasks: firewall-linux.yml
-  when: not ci_test
+  when: not ci_test and openclaw_firewall_backend == 'ufw'
+
+- name: Include firewall configuration tasks (RedHat family)
+  ansible.builtin.include_tasks: firewall-redhat.yml
+  when: not ci_test and openclaw_firewall_backend == 'firewalld'
 
 - name: Include Node.js installation tasks
   ansible.builtin.include_tasks: nodejs.yml
 
 - name: Include OpenClaw setup tasks
   ansible.builtin.include_tasks: openclaw.yml
+
+- name: Include rootless Quadlet tasks (RedHat family)
+  ansible.builtin.include_tasks: quadlet-redhat.yml
+  when: not ci_test and openclaw_container_runtime == 'podman'

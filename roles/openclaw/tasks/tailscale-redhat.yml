@@ -1,0 +1,58 @@
+---
+# RedHat-family Tailscale installation.
+
+- name: Configure Tailscale repository (Fedora)
+  ansible.builtin.yum_repository:
+    name: tailscale-stable
+    description: Tailscale stable
+    baseurl: https://pkgs.tailscale.com/stable/fedora/$basearch
+    enabled: true
+    repo_gpgcheck: true
+    gpgcheck: true
+    gpgkey: https://pkgs.tailscale.com/stable/fedora/repo.gpg
+  when: ansible_distribution == 'Fedora'
+
+- name: Configure Tailscale repository (RHEL family)
+  ansible.builtin.yum_repository:
+    name: tailscale-stable
+    description: Tailscale stable
+    baseurl: "https://pkgs.tailscale.com/stable/centos/{{ ansible_distribution_major_version }}/$basearch"
+    enabled: true
+    repo_gpgcheck: true
+    gpgcheck: true
+    gpgkey: "https://pkgs.tailscale.com/stable/centos/{{ ansible_distribution_major_version }}/repo.gpg"
+  when: ansible_distribution != 'Fedora'
+
+- name: Install Tailscale (RedHat family)
+  ansible.builtin.dnf:
+    name: tailscale
+    state: present
+    update_cache: true
+
+- name: Enable Tailscale service (RedHat family)
+  ansible.builtin.systemd:
+    name: tailscaled
+    enabled: true
+    state: started
+
+- name: Check if Tailscale is already connected (RedHat family)
+  ansible.builtin.command: tailscale status --json
+  register: tailscale_status_redhat
+  changed_when: false
+  failed_when: false
+
+- name: Display Tailscale auth URL if not connected (RedHat family)
+  ansible.builtin.debug:
+    msg:
+      - "============================================"
+      - "Tailscale installed but not connected yet"
+      - "============================================"
+      - ""
+      - "To connect this machine to your Tailnet:"
+      - "Run: sudo tailscale up"
+      - ""
+      - "For unattended installation, use an auth key:"
+      - "sudo tailscale up --authkey tskey-auth-xxxxx"
+      - ""
+      - "Get auth key from: https://login.tailscale.com/admin/settings/keys"
+  when: tailscale_status_redhat.rc != 0

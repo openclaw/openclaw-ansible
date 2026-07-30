@@ -1,0 +1,31 @@
+# OpenClaw gateway - rootless Podman Quadlet
+# Managed by openclaw-ansible for RedHat-family installs only.
+
+[Unit]
+Description=OpenClaw gateway (rootless Podman)
+Wants=network-online.target
+After=network-online.target
+
+[Container]
+Image={{ openclaw_podman_image }}
+ContainerName={{ openclaw_podman_container_name }}
+UserNS=keep-id
+User=%U:%G
+Volume={{ openclaw_config_dir }}:/home/node/.openclaw:Z
+Volume={{ openclaw_config_dir }}/workspace:/home/node/.openclaw/workspace:Z
+EnvironmentFile={{ openclaw_config_dir }}/.env
+Environment=HOME=/home/node
+Environment=TERM=xterm-256color
+Environment=NPM_CONFIG_CACHE=/home/node/.openclaw/.npm
+Environment=OPENCLAW_NO_RESPAWN=1
+PublishPort=127.0.0.1:{{ openclaw_podman_gateway_host_port }}:18789
+PublishPort=127.0.0.1:{{ openclaw_podman_bridge_host_port }}:18790
+Pull=newer
+Exec=node dist/index.js gateway --bind lan --port 18789
+
+[Service]
+TimeoutStartSec=300
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

@@ -49,7 +49,17 @@
   become_user: "{{ openclaw_user }}"
   environment:
     PNPM_HOME: "{{ openclaw_home }}/.local/share/pnpm"
-    PATH: "{{ openclaw_home }}/.local/bin:{{ openclaw_home }}/.local/share/pnpm:/usr/local/bin:/usr/bin:/bin"
+    PATH: >-
+      {{
+        [
+          openclaw_home ~ '/.local/bin',
+          openclaw_home ~ '/.local/share/pnpm/bin',
+          openclaw_home ~ '/.local/share/pnpm',
+          '/usr/local/bin',
+          '/usr/bin',
+          '/bin'
+        ] | join(':')
+      }}
     HOME: "{{ openclaw_home }}"
   register: pnpm_install_result
   changed_when: "'Already up to date' not in pnpm_install_result.stdout"
@@ -63,7 +73,17 @@
   become_user: "{{ openclaw_user }}"
   environment:
     PNPM_HOME: "{{ openclaw_home }}/.local/share/pnpm"
-    PATH: "{{ openclaw_home }}/.local/bin:{{ openclaw_home }}/.local/share/pnpm:/usr/local/bin:/usr/bin:/bin"
+    PATH: >-
+      {{
+        [
+          openclaw_home ~ '/.local/bin',
+          openclaw_home ~ '/.local/share/pnpm/bin',
+          openclaw_home ~ '/.local/share/pnpm',
+          '/usr/local/bin',
+          '/usr/bin',
+          '/bin'
+        ] | join(':')
+      }}
     HOME: "{{ openclaw_home }}"
   register: pnpm_build_result
   changed_when: true  # Build always changes dist/ directory
@@ -180,12 +200,23 @@
 - name: Verify openclaw installation from development build
   ansible.builtin.shell:
     cmd: openclaw --version
+    chdir: "{{ openclaw_home }}"
     executable: /bin/bash
   become: true
   become_user: "{{ openclaw_user }}"
   environment:
     PNPM_HOME: "{{ openclaw_home }}/.local/share/pnpm"
-    PATH: "{{ openclaw_home }}/.local/bin:{{ openclaw_home }}/.local/share/pnpm:/usr/local/bin:/usr/bin:/bin"
+    PATH: >-
+      {{
+        [
+          openclaw_home ~ '/.local/bin',
+          openclaw_home ~ '/.local/share/pnpm/bin',
+          openclaw_home ~ '/.local/share/pnpm',
+          '/usr/local/bin',
+          '/usr/bin',
+          '/bin'
+        ] | join(':')
+      }}
     HOME: "{{ openclaw_home }}"
   register: openclaw_dev_version
   changed_when: false

@@ -1,0 +1,23 @@
+---
+- name: Install required packages for Node.js repository
+  ansible.builtin.dnf:
+    name:
+      - ca-certificates
+      - curl
+      - gnupg2
+    state: present
+
+- name: Add NodeSource RPM repository
+  ansible.builtin.yum_repository:
+    name: nodesource-nodejs
+    description: Node.js Packages for Linux RPM based distros
+    baseurl: "https://rpm.nodesource.com/pub_{{ nodejs_version }}/nodistro/nodejs/$basearch"
+    enabled: true
+    gpgcheck: true
+    gpgkey: https://rpm.nodesource.com/gpgkey/ns-operations-public.key
+
+- name: Install Node.js
+  ansible.builtin.dnf:
+    name: nodejs
+    state: present
+    update_cache: true

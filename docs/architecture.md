@@ -1,132 +1,98 @@
 ---
 title: Architecture
-description: Technical implementation details
+description: OpenClaw Ansible installer task flow and platform-specific runtime architecture
 ---
 
 # Architecture
 
-## Component Overview
+The installer keeps one common OpenClaw setup flow and splits OS-native security/runtime tasks by OS family.
 
-```
-┌─────────────────────────────────────────┐
-│ UFW Firewall (SSH only)                 │
-└──────────────┬──────────────────────────┘
-               │
-┌──────────────┴──────────────────────────┐
-│ DOCKER-USER Chain (iptables)            │
-│ Blocks all external container access    │
-└──────────────┬──────────────────────────┘
-               │
-┌──────────────┴──────────────────────────┐
-│ Docker Daemon                            │
-│ - Non-root containers                    │
-│ - Localhost-only binding                 │
-└──────────────┬──────────────────────────┘
-               │
-┌──────────────┴──────────────────────────┐
-│ OpenClaw Container                       │
-│ User: openclaw                           │
-│ Port: 127.0.0.1:3000                     │
-└──────────────────────────────────────────┘
+## Platform matrix
+
+| Platform | Firewall | Container runtime | Service model |
+| --- | --- | --- | --- |
+| Debian/Ubuntu | UFW | Docker CE + Compose V2 | Host OpenClaw daemon installed during onboarding |
+| Fedora/RHEL family | firewalld | rootless Podman only | Rootless Podman Quadlet under the `openclaw` user |
+
+RedHat-family support requires Fedora 38+ or RHEL-family 9+. CentOS 7 and RHEL-family 7/8 are rejected because rootless Podman Quadlets are required.
+
+## Task flow
+
+```text
+preflight.yml          # load OS vars, reject unsupported/rootful modes
+system-tools.yml       # Debian apt tools or RedHat dnf tools
+tailscale-*.yml        # optional Tailscale repo/package/service
+user.yml               # create non-root openclaw user and user-systemd env
+runtime setup          # Docker on Debian; rootless Podman user prep on RedHat
+firewall setup         # UFW on Debian; firewalld on RedHat
+nodejs.yml             # NodeSource packages for the OS family
+openclaw.yml           # pnpm install and OpenClaw directories
+quadlet-redhat.yml     # RedHat only: rootless Quadlet generation/start
 ```
 
-## File Structure
+## Debian and Ubuntu path
 
-```
-/opt/openclaw/
-├── Dockerfile
-├── docker-compose.yml
+Debian-family hosts preserve the existing behavior:
+
+1. Install Docker CE and Compose V2 from Docker's apt repository.
+2. Add the `openclaw` user to the `docker` group.
+3. Configure UFW default deny policies.
+4. Add a DOCKER-USER chain to block externally forwarded Docker traffic.
+5. Configure `/etc/docker/daemon.json` and restart Docker when it changes.
+6. Install OpenClaw with pnpm; onboarding installs the host daemon.
+
+Docker is installed for sandbox/container workflows. The gateway setup still runs through OpenClaw onboarding unless the operator chooses a different flow.
+
+## Fedora and RHEL-family path
+
+RedHat-family hosts use native packages and rootless Podman only:
+
+1. Install Podman, rootless networking/storage helpers, firewalld, SELinux support, Node.js, and system tools with `dnf`.
+2. Create the non-root `openclaw` user.
+3. Ensure `/etc/subuid` and `/etc/subgid` ranges for the app user.
+4. Enable linger with `loginctl enable-linger openclaw`.
+5. Start the `user@<uid>.service` user manager.
+6. Verify `podman info` reports rootless mode as the app user.
+7. Configure firewalld permanent/immediate rules for SSH and optional Tailscale.
+8. Generate `/home/openclaw/.config/containers/systemd/openclaw.container`.
+9. Run `systemctl --user daemon-reload` and `systemctl --user enable --now openclaw.service` as the app user.
+
+The RedHat path never starts rootful Podman services, never writes OpenClaw Quadlets to system Quadlet directories, and never falls back to Docker.
+
+## Rootless Quadlet layout
+
+```text
+/home/openclaw/.config/containers/systemd/
+└── openclaw.container
 
 /home/openclaw/.openclaw/
-├── config.yml
-├── sessions/
-└── credentials/
-
-/etc/systemd/system/
-└── openclaw.service
-
-/etc/docker/
-└── daemon.json
-
-/etc/ufw/
-└── after.rules (DOCKER-USER chain)
+├── .env
+├── openclaw.json
+└── workspace/
 ```
 
-## Service Management
+The Quadlet publishes localhost ports only:
 
-OpenClaw runs as a systemd service that manages the Docker container:
-
-```bash
-# Systemd controls Docker Compose
-systemd → docker compose → openclaw container
+```text
+127.0.0.1:18789:18789
+127.0.0.1:18790:18790
 ```
 
-## Installation Flow
+Bind mounts use SELinux private labels with `:Z`.
 
-1. **Tailscale Setup** (`tailscale.yml`)
-   - Add Tailscale repository
-   - Install Tailscale package
-   - Display connection instructions
+## Security boundaries
 
-2. **User Creation** (`user.yml`)
-   - Create `openclaw` system user
+- Firewall rules expose SSH and optional Tailscale only.
+- OpenClaw runs as an unprivileged `openclaw` user.
+- Debian/Ubuntu uses UFW plus DOCKER-USER to prevent accidental Docker exposure.
+- Fedora/RHEL-family uses rootless Podman and user-scoped systemd only.
+- SELinux is not disabled.
+- Rootful Podman is explicitly unsupported.
 
-3. **Docker Installation** (`docker.yml`)
-   - Install Docker CE + Compose V2
-   - Add user to docker group
-   - Create `/etc/docker` directory
+## Ansible collections
 
-4. **Firewall Setup** (`firewall.yml`)
-   - Install UFW
-   - Configure DOCKER-USER chain
-   - Configure Docker daemon (`/etc/docker/daemon.json`)
-   - Allow SSH (22/tcp) and Tailscale (41641/udp)
+Required collections are declared in `requirements.yml`:
 
-5. **Node.js Installation** (`nodejs.yml`)
-   - Add NodeSource repository
-   - Install Node.js 22.x
-   - Install pnpm globally
-
-6. **OpenClaw Setup** (`openclaw.yml`)
-   - Create directories
-   - Generate configs from templates
-   - Build Docker image
-   - Start container via Compose
-   - Install systemd service
-
-## Key Design Decisions
-
-### Why UFW + DOCKER-USER?
-
-Docker manipulates iptables directly, bypassing UFW. The DOCKER-USER chain is evaluated before Docker's FORWARD chain, allowing us to block traffic before Docker sees it.
-
-### Why Localhost Binding?
-
-Defense in depth. Even if DOCKER-USER fails, localhost binding prevents external access.
-
-### Why Systemd Service?
-
-- Auto-start on boot
-- Clean lifecycle management
-- Integration with system logs
-- Dependency management (after Docker)
-
-### Why Non-Root Container?
-
-Principle of least privilege. If container is compromised, attacker has limited privileges.
-
-## Ansible Task Order
-
-```
-main.yml
-├── tailscale.yml (VPN setup)
-├── user.yml (create openclaw user)
-├── docker.yml (install Docker, create /etc/docker)
-├── firewall.yml (configure UFW + Docker daemon)
-├── nodejs.yml (Node.js + pnpm)
-└── openclaw.yml (container setup)
-```
-
-Order matters: Docker must be installed before firewall configuration because:
-1. `/etc/docker` directory must exist for `daemon.json`
-2. Docker service must exist to be restarted after config changes
+- `ansible.posix` for `firewalld` and authorized keys
+- `community.general` for shared utility modules
+- `community.docker` for Debian/Ubuntu Docker tasks

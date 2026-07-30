@@ -1,0 +1,59 @@
+---
+- name: Detect supported OpenClaw installer OS family
+  ansible.builtin.assert:
+    that:
+      - ansible_system == 'Linux'
+      - ansible_os_family in ['Debian', 'RedHat']
+    fail_msg: >-
+      Unsupported operating system or OS family: {{ ansible_system }} / {{ ansible_os_family }}.
+      Supported platforms are Debian 11+, Ubuntu 20.04+, Fedora 38+, and
+      RHEL-family 9+ systems with rootless Podman Quadlet support.
+
+- name: Load OS-family variables
+  ansible.builtin.include_vars: "{{ ansible_os_family }}.yml"
+
+- name: Detect supported OpenClaw installer platform
+  ansible.builtin.set_fact:
+    openclaw_is_debian_supported: "{{ ansible_distribution in ['Debian', 'Ubuntu'] }}"
+    openclaw_is_fedora_supported: >-
+      {{ ansible_distribution == 'Fedora' and (ansible_distribution_major_version | int) >= 38 }}
+    openclaw_is_el_supported: >-
+      {{
+        ansible_distribution in [
+          'RedHat',
+          'Red Hat Enterprise Linux',
+          'CentOS',
+          'CentOS Stream',
+          'AlmaLinux',
+          'Rocky',
+          'OracleLinux',
+          'Oracle Linux'
+        ]
+        and (ansible_distribution_major_version | int) >= 9
+      }}
+
+- name: Fail on unsupported Linux distribution
+  ansible.builtin.fail:
+    msg: >-
+      Unsupported Linux distribution: {{ ansible_distribution }} {{ ansible_distribution_version }}.
+      Supported platforms are Debian 11+, Ubuntu 20.04+, Fedora 38+, and
+      RHEL-family 9+ systems with rootless Podman Quadlet support. CentOS 7 and
+      RHEL-family 7/8 are not supported because the installer requires rootless
+      Podman Quadlets.
+  when:
+    - not (openclaw_is_debian_supported or openclaw_is_fedora_supported or openclaw_is_el_supported)
+
+- name: Reject rootful Podman configuration
+  ansible.builtin.assert:
+    that:
+      - openclaw_user != 'root'
+      - (container_runtime | default(openclaw_container_runtime)) == 'podman'
+      - (podman_mode | default(openclaw_podman_mode)) == 'rootless'
+      - not (openclaw_rootful_podman | bool)
+      - not (rootful_podman | default(false) | bool)
+    fail_msg: >-
+      RedHat-family installs support rootless Podman only. Set openclaw_user to
+      a non-root user and do not request rootful Podman; rootful Podman is
+      intentionally unsupported and has no fallback path.
+    success_msg: "RedHat-family container runtime policy is rootless Podman only."
+  when: ansible_os_family == 'RedHat'

@@ -1,0 +1,30 @@
+---
+# RedHat-family firewall configuration with firewalld.
+
+- name: Ensure firewalld is installed
+  ansible.builtin.dnf:
+    name: firewalld
+    state: present
+
+- name: Enable and start firewalld
+  ansible.builtin.systemd:
+    name: firewalld
+    state: started
+    enabled: true
+
+- name: Allow SSH through firewalld
+  ansible.posix.firewalld:
+    zone: "{{ openclaw_firewalld_zone }}"
+    port: 22/tcp
+    permanent: true
+    immediate: true
+    state: enabled
+
+- name: Allow Tailscale UDP through firewalld
+  ansible.posix.firewalld:
+    zone: "{{ openclaw_firewalld_zone }}"
+    port: 41641/udp
+    permanent: true
+    immediate: true
+    state: enabled
+  when: tailscale_enabled | bool

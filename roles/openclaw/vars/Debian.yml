@@ -1,0 +1,37 @@
+---
+openclaw_container_runtime: docker
+openclaw_firewall_backend: ufw
+openclaw_linux_package_manager: apt
+openclaw_system_packages:
+  - vim
+  - nano
+  - git
+  - git-lfs
+  - curl
+  - wget
+  - netcat-openbsd
+  - net-tools
+  - dnsutils
+  - iputils-ping
+  - traceroute
+  - tcpdump
+  - nmap
+  - socat
+  - telnet
+  - strace
+  - lsof
+  - gdb
+  - htop
+  - iotop
+  - iftop
+  - sysstat
+  - procps
+  - tmux
+  - tree
+  - jq
+  - unzip
+  - rsync
+  - less
+  - sudo
+  - build-essential
+  - file
