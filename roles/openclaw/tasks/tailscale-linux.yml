@@ -56,14 +56,38 @@
     tailscale_backend_state: "NoState"
   when: tailscale_status_linux.rc != 0
 
+# --timeout defaults to 0s (block forever) in Tailscale CLI; bound it so an
+# unreachable control plane or approval-pending key cannot hang one-command install.
 - name: Auto-connect Tailscale with auth key
-  ansible.builtin.command: tailscale up --authkey {{ tailscale_authkey }}
+  ansible.builtin.command:
+    argv:
+      - tailscale
+      - up
+      - --authkey
+      - "{{ tailscale_authkey }}"
+      - "--timeout={{ tailscale_authkey_timeout }}"
   register: tailscale_connect
   changed_when: tailscale_connect.rc == 0
+  failed_when: false
   no_log: true
+  # Hard cap so a hung CLI cannot stall Ansible if --timeout is ignored by old clients.
+  timeout: "{{ tailscale_authkey_ansible_timeout | int }}"
   when:
     - tailscale_backend_state != 'Running'
     - tailscale_authkey | default('') | length > 0
+
+- name: Fail clearly when auth-key connect times out or fails
+  ansible.builtin.fail:
+    msg: >-
+      Tailscale auth-key connect failed or timed out after
+      {{ tailscale_authkey_timeout }} (BackendState was
+      {{ tailscale_backend_state }}). Check control-plane reachability,
+      auth-key validity, and whether the key requires interactive approval.
+      Re-run with a valid key or connect manually: sudo tailscale up
+  when:
+    - tailscale_connect is defined
+    - not (tailscale_connect.skipped | default(false))
+    - (tailscale_connect.rc | default(1)) != 0
 
 # Re-query after connect so later operator grant sees Running on first-run auth-key installs.
 - name: Refresh Tailscale backend state after auth-key auto-connect
