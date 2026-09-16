@@ -16,6 +16,11 @@ runs as root, while OpenClaw package installation and source builds run as the
 dedicated OpenClaw user. Do not pass `-e ansible_become=false`: that overrides
 the role's task-level user switching and runs those commands as root too.
 
+Reapplying development mode also repairs ownership of an existing checkout
+created by an older root invocation before Git and build tasks switch users.
+This preserves local file contents and permissions and does not follow symlinks
+to files outside the checkout.
+
 ## Manual Installation
 
 ### Prerequisites

@@ -14,6 +14,18 @@
     path: "{{ openclaw_repo_dir }}/.git"
   register: openclaw_repo_exists
 
+# Older root installer invocations also cloned and built as root. Repair that
+# checkout before Git/build tasks switch users, without following external links.
+- name: Restore service-user ownership of existing development checkout
+  ansible.builtin.file:
+    path: "{{ openclaw_repo_dir }}"
+    state: directory
+    owner: "{{ openclaw_user }}"
+    group: "{{ openclaw_user }}"
+    recurse: true
+    follow: false
+  when: openclaw_repo_exists.stat.exists
+
 - name: Clone openclaw repository
   ansible.builtin.git:
     repo: "{{ openclaw_repo_url }}"

@@ -29,6 +29,11 @@ which uses real Ansible and sudo to assert that system tasks run as root and
 service tasks run as an unprivileged account. It also checks extra-variable argument
 forwarding. Run this test only as root in a disposable Linux container or VM.
 
+`development-upgrade.sh` then runs the production development tasks with real Git
+and pnpm against a small local project. It starts with a root-owned checkout and
+build output, verifies the build runs as `openclaw`, and checks that a private
+local file and an external symlink target retain their contents and permissions.
+
 ## Files
 
 - `Dockerfile.ubuntu2404` - Ubuntu 24.04 container with Ansible pre-installed

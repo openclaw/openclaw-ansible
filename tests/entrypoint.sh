@@ -17,6 +17,9 @@ echo "===> Verification: PASSED"
 echo "===> Installer entrypoint user switching"
 bash tests/installer-user.sh
 
+echo "===> Existing development checkout upgrade"
+bash tests/development-upgrade.sh
+
 # --- Step 3: Idempotency ---
 echo "===> Step 3: Idempotency test"
 IDEMPOTENCY_OUT=$(ansible-playbook playbook.yml "${PLAYBOOK_ARGS[@]}" 2>&1)
