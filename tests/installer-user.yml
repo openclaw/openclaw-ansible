@@ -1,0 +1,30 @@
+---
+- name: Verify installer entrypoints preserve task-level privilege switching
+  hosts: localhost
+  connection: local
+  become: true
+  gather_facts: false
+
+  tasks:
+    - name: Check system task identity
+      ansible.builtin.command: id -un
+      register: installer_system_user
+      changed_when: false
+
+    - name: Check service task identity
+      ansible.builtin.command: id -un
+      become: true
+      become_user: nobody
+      register: installer_service_user
+      changed_when: false
+
+    - name: Assert system and service tasks run as their intended users
+      ansible.builtin.assert:
+        that:
+          - installer_system_user.stdout == 'root'
+          - installer_service_user.stdout == 'nobody'
+          - installer_test_value == 'value with spaces'
+        fail_msg: >-
+          System task ran as {{ installer_system_user.stdout }};
+          service task ran as {{ installer_service_user.stdout }}.
+        success_msg: System tasks run as root and service tasks run unprivileged.

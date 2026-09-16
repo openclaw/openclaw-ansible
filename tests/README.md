@@ -18,9 +18,16 @@ bash tests/run-tests.sh ubuntu2404
 
 The test harness runs three sequential tests:
 
-1. **Convergence**: Runs the playbook with `ci_test=true` to verify it completes without errors
+1. **Convergence**: Runs `run-playbook.sh` as root with `ci_test=true` to verify the public entrypoint completes without errors
 2. **Verification**: Runs `verify.yml` to assert the system is in the expected state
 3. **Idempotency**: Runs the playbook a second time and verifies `changed=0`
+
+Between verification and idempotency, `installer-user.sh` exercises root invocation
+through the local-source, installed-collection, and bootstrap entrypoints. Collection
+acquisition is stubbed and playbook selection is redirected to `installer-user.yml`,
+which uses real Ansible and sudo to assert that system tasks run as root and
+service tasks run as an unprivileged account. It also checks extra-variable argument
+forwarding. Run this test only as root in a disposable Linux container or VM.
 
 ## Files
 

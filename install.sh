@@ -34,17 +34,17 @@ else
 fi
 
 # Check if running as root or with sudo access
+ANSIBLE_ARGS=()
 if [ "$EUID" -eq 0 ]; then
     echo -e "${GREEN}Running as root.${NC}"
     SUDO=""
-    ANSIBLE_EXTRA_VARS="-e ansible_become=false"
 else
     if ! command -v sudo &> /dev/null; then
         echo -e "${RED}Error: sudo is not installed. Please install sudo or run as root.${NC}"
         exit 1
     fi
     SUDO="sudo"
-    ANSIBLE_EXTRA_VARS="--ask-become-pass"
+    ANSIBLE_ARGS=(--ask-become-pass)
 fi
 
 echo -e "${GREEN}[1/3] Checking prerequisites...${NC}"
@@ -91,7 +91,8 @@ fi
 echo ""
 
 # Run the playbook
-ansible-playbook openclaw.installer.install $ANSIBLE_EXTRA_VARS "$@"
+# Keep task-level become_user active even when the installer runs as root.
+ansible-playbook openclaw.installer.install "${ANSIBLE_ARGS[@]}" "$@"
 
 # Cleanup
 rm -f "$REQUIREMENTS_FILE"

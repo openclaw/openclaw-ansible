@@ -11,6 +11,11 @@ description: Detailed installation and configuration instructions
 curl -fsSL https://raw.githubusercontent.com/openclaw/openclaw-ansible/main/install.sh | bash
 ```
 
+Both `install.sh` and `run-playbook.sh` support running as root. System setup
+runs as root, while OpenClaw package installation and source builds run as the
+dedicated OpenClaw user. Do not pass `-e ansible_become=false`: that overrides
+the role's task-level user switching and runs those commands as root too.
+
 ## Manual Installation
 
 ### Prerequisites

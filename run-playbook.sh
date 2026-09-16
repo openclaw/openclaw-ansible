@@ -50,7 +50,8 @@ fi
 
 # Run the Ansible playbook
 if [ "$EUID" -eq 0 ]; then
-    ansible-playbook "$PLAYBOOK" -e ansible_become=false "$@"
+    # Root needs no password prompt, but service-user tasks must still switch users.
+    ansible-playbook "$PLAYBOOK" "$@"
     PLAYBOOK_EXIT=$?
 else
     if sudo -n true 2>/dev/null; then
