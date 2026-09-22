@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Validate the standalone deployment playbook in CI and correct task-order guidance. Thanks @goutamadwant for the fix and @tosin2013 for the report.
 - Preserve service-user privilege switching when either installer script is launched as root, and repair existing root-owned development checkouts before updating and building as the service user.
 - Fix local installation failing after package setup by removing tasks that reference the deleted banner template; run the Docker installer harness in CI.
 - Reuse fresh apt metadata on repeated installations while refreshing immediately when the NodeSource repository is added.
