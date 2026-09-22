@@ -1,4 +1,32 @@
 ---
+- name: Validate the requested NodeSource series
+  ansible.builtin.assert:
+    that: nodejs_version is match('^[0-9]+\.x$')
+    fail_msg: "nodejs_version must name a NodeSource major series, such as 24.x."
+
+- name: Inspect the system Node.js executable
+  ansible.builtin.stat:
+    path: /usr/bin/node
+  register: openclaw_system_node
+
+- name: Read the existing system Node.js version
+  ansible.builtin.command: /usr/bin/node --version
+  register: openclaw_existing_node_version
+  changed_when: false
+  check_mode: false
+  when: openclaw_system_node.stat.exists
+
+- name: Select the requested NodeSource series
+  ansible.builtin.set_fact:
+    openclaw_nodejs_series: "{{ nodejs_version }}"
+
+- name: Preserve a newer installed Node.js major and its update channel
+  ansible.builtin.set_fact:
+    openclaw_nodejs_series: "{{ openclaw_existing_node_version.stdout.split('.')[0][1:] }}.x"
+  when:
+    - openclaw_system_node.stat.exists
+    - openclaw_existing_node_version.stdout.split('.')[0][1:] | int > nodejs_version.split('.')[0] | int
+
 - name: Install required packages for Node.js
   ansible.builtin.apt:
     name:
@@ -28,7 +56,7 @@
     dest: /etc/apt/sources.list.d/nodesource.list
     content: >
       deb [signed-by=/etc/apt/keyrings/nodesource.gpg]
-      https://deb.nodesource.com/node_{{ nodejs_version }} nodistro main
+      https://deb.nodesource.com/node_{{ openclaw_nodejs_series }} nodistro main
     owner: root
     group: root
     mode: '0644'
@@ -42,7 +70,7 @@
 
 - name: Install Node.js
   ansible.builtin.apt:
-    name: "nodejs={{ nodejs_version | replace('.x', '.*') }}"
+    name: "nodejs={{ openclaw_nodejs_series | replace('.x', '.*') }}"
     state: present
 
 - name: Check if pnpm is already installed

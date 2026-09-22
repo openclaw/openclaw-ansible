@@ -170,9 +170,15 @@ These variables only apply when `openclaw_install_mode: development`
 Reapplying the role updates its NodeSource repository and upgrades the system
 Node.js package to the latest available release. The default is Node.js 24 LTS;
 current OpenClaw needs 24.16+ on this series for correct SQLite text handling.
+An already installed newer major is preserved along with its matching NodeSource
+update channel; the role does not downgrade it to the configured series.
 Update inventories that explicitly select `22.x` to `24.x` when upgrading current
 OpenClaw. This changes the host runtime, including for other applications using
 the system `node` executable.
+
+The host must support the selected [Node.js platform requirements](https://github.com/nodejs/node/blob/v24.x/BUILDING.md#platform-list).
+The runtime migration is integration-tested on Ubuntu 24.04 x86_64; other
+architectures have not been verified by this harness.
 
 ### Tailscale Configuration
 

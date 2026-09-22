@@ -20,6 +20,8 @@ Before convergence, `nodejs-upgrade.yml` installs the previous Node.js 22 defaul
 reapplies the production tasks with the current default, and verifies both the
 major-version upgrade and SQLite text round-tripping across embedded NUL bytes.
 This test requires a fresh disposable container; it changes the system runtime.
+After the full harness, a separate container starts with Node.js 26 and verifies
+that applying the Node.js 24 default preserves both Node.js 26 and its update channel.
 
 Before provisioning, `run-playbook-output.sh` checks the public wrapper's onboarding
 instructions and verifies that a failed playbook preserves its exit status without

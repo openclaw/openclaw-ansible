@@ -9,3 +9,7 @@ docker build -t "$IMAGE" -f "tests/Dockerfile.${DISTRO}" .
 
 echo "Running tests..."
 docker run --rm "$IMAGE"
+
+echo "Verifying a newer installed Node.js runtime is preserved..."
+docker run --rm --entrypoint ansible-playbook "$IMAGE" tests/nodejs-upgrade.yml \
+  -e nodejs_test_initial_series=26.x -e nodejs_test_expected_major=26
