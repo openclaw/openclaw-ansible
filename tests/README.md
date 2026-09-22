@@ -19,6 +19,9 @@ bash tests/run-tests.sh ubuntu2404
 Before convergence, `nodejs-upgrade.yml` installs the previous Node.js 22 default,
 reapplies the production tasks with the current default, and verifies both the
 major-version upgrade and SQLite text round-tripping across embedded NUL bytes.
+It also dry-runs the production tasks on a fresh host and before the upgrade,
+checking that neither the runtime nor its repository is changed. Check mode is
+applied at the role boundary, without relying on a global check-mode flag.
 This test requires a fresh disposable container; it changes the system runtime.
 After the full harness, a separate container starts with Node.js 26 and verifies
 that applying the Node.js 24 default preserves both Node.js 26 and its update channel.

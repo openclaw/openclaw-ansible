@@ -51,6 +51,12 @@
     creates: /etc/apt/keyrings/nodesource.gpg
     executable: /bin/bash
 
+# Check actual files: check mode can be applied by a caller at an include boundary.
+- name: Inspect the installed NodeSource signing key
+  ansible.builtin.stat:
+    path: /etc/apt/keyrings/nodesource.gpg
+  register: openclaw_nodesource_key
+
 - name: Add NodeSource repository
   ansible.builtin.copy:
     dest: /etc/apt/sources.list.d/nodesource.list
@@ -61,17 +67,41 @@
     group: root
     mode: '0644'
   register: openclaw_nodesource_repository
+  when: openclaw_nodesource_key.stat.exists
+
+- name: Inspect the installed NodeSource repository
+  ansible.builtin.stat:
+    path: /etc/apt/sources.list.d/nodesource.list
+  register: openclaw_nodesource_file
+
+- name: Read the installed NodeSource repository
+  ansible.builtin.slurp:
+    src: /etc/apt/sources.list.d/nodesource.list
+  register: openclaw_nodesource_content
+  when: openclaw_nodesource_file.stat.exists
+
+- name: Check whether the selected NodeSource series is available
+  ansible.builtin.set_fact:
+    openclaw_nodesource_ready: >-
+      {{
+        openclaw_nodesource_key.stat.exists and
+        openclaw_nodesource_file.stat.exists and
+        ('https://deb.nodesource.com/node_' ~ openclaw_nodejs_series ~ ' nodistro main')
+        in (openclaw_nodesource_content.content | b64decode)
+      }}
 
 - name: Update apt cache after adding NodeSource repo
   ansible.builtin.apt:
     update_cache: true
     # A new or changed source needs an immediate refresh even when other lists are fresh.
     cache_valid_time: "{{ 0 if openclaw_nodesource_repository.changed else 3600 }}"
+  when: openclaw_nodesource_ready
 
 - name: Install Node.js
   ansible.builtin.apt:
     name: "nodejs={{ openclaw_nodejs_series | replace('.x', '.*') }}"
     state: present
+  when: openclaw_nodesource_ready
 
 - name: Check if pnpm is already installed
   ansible.builtin.command: pnpm --version

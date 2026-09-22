@@ -17,6 +17,29 @@
       ansible.builtin.apt:
         update_cache: true
 
+    - name: Dry-run runtime setup before NodeSource exists
+      ansible.builtin.include_role:
+        name: openclaw
+        tasks_from: nodejs
+        apply:
+          check_mode: true
+
+    - name: Inspect paths after the fresh-host dry run
+      ansible.builtin.stat:
+        path: "{{ item }}"
+      loop:
+        - /usr/bin/node
+        - /etc/apt/keyrings/nodesource.gpg
+        - /etc/apt/sources.list.d/nodesource.list
+      register: nodejs_test_dry_paths
+
+    - name: Verify the fresh-host dry run did not install runtime files
+      ansible.builtin.assert:
+        that: not item.stat.exists
+      loop: "{{ nodejs_test_dry_paths.results }}"
+      loop_control:
+        label: "{{ item.item }}"
+
     - name: Install the fixture Node.js series
       ansible.builtin.include_role:
         name: openclaw
@@ -32,6 +55,31 @@
     - name: Verify the fixture starts on the requested Node.js series
       ansible.builtin.assert:
         that: previous_node.stdout.startswith('v' ~ nodejs_test_initial_series.split('.')[0] ~ '.')
+
+    - name: Dry-run a change to the default series
+      ansible.builtin.include_role:
+        name: openclaw
+        tasks_from: nodejs
+        apply:
+          check_mode: true
+
+    - name: Read the runtime after the upgrade dry run
+      ansible.builtin.command: node --version
+      register: nodejs_test_dry_version
+      changed_when: false
+
+    - name: Read the repository after the upgrade dry run
+      ansible.builtin.slurp:
+        src: /etc/apt/sources.list.d/nodesource.list
+      register: nodejs_test_dry_repository
+
+    - name: Verify the upgrade dry run preserves the installed runtime and channel
+      ansible.builtin.assert:
+        that:
+          - nodejs_test_dry_version.stdout == previous_node.stdout
+          - >-
+            ('node_' ~ nodejs_test_initial_series ~ ' nodistro main')
+            in (nodejs_test_dry_repository.content | b64decode)
 
     - name: Apply the default Node.js configuration
       ansible.builtin.include_role:
