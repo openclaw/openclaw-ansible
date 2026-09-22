@@ -1,0 +1,59 @@
+---
+- name: Verify existing Node.js installations upgrade to the default runtime
+  hosts: localhost
+  connection: local
+  become: true
+  gather_facts: false
+
+  vars_files:
+    - ../roles/openclaw/defaults/main.yml
+
+  tasks:
+    - name: Refresh package metadata for the fresh container
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Install the previous Node.js default
+      ansible.builtin.include_role:
+        name: openclaw
+        tasks_from: nodejs
+      vars:
+        nodejs_version: "22.x"
+
+    - name: Read the previous runtime version
+      ansible.builtin.command: node --version
+      register: previous_node
+      changed_when: false
+
+    - name: Verify the upgrade fixture starts on Node.js 22
+      ansible.builtin.assert:
+        that: previous_node.stdout.startswith('v22.')
+
+    - name: Apply the default Node.js configuration
+      ansible.builtin.include_role:
+        name: openclaw
+        tasks_from: nodejs
+
+    - name: Read the upgraded runtime version
+      ansible.builtin.command: node --version
+      register: upgraded_node
+      changed_when: false
+
+    - name: Verify the installed major matches the configured default
+      ansible.builtin.assert:
+        that: upgraded_node.stdout.startswith('v' ~ nodejs_version.split('.')[0] ~ '.')
+
+    - name: Verify SQLite preserves text containing an embedded NUL
+      ansible.builtin.command:
+        argv:
+          - node
+          - -e
+          - >-
+            const { DatabaseSync } = require('node:sqlite');
+            const db = new DatabaseSync(':memory:');
+            const value = 'before\0after';
+            const row = db.prepare('SELECT ? AS value').get(value);
+            db.close();
+            if (row.value !== value) throw new Error('SQLite truncated text at NUL');
+      changed_when: false

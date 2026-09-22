@@ -32,7 +32,7 @@ openclaw_ssh_keys:
 openclaw_repo_url: "https://github.com/YOUR_USERNAME/openclaw.git"
 openclaw_repo_branch: "main"
 tailscale_authkey: "tskey-auth-xxxxxxxxxxxxx"
-nodejs_version: "22.x"
+nodejs_version: "24.x"
 ```
 
 Then use it:
@@ -160,12 +160,19 @@ These variables only apply when `openclaw_install_mode: development`
 
 #### `nodejs_version`
 - **Type**: String
-- **Default**: `22.x`
+- **Default**: `24.x`
 - **Description**: Node.js major version to install
 - **Example**:
   ```bash
-  -e nodejs_version=20.x
+  -e nodejs_version=24.x
   ```
+
+Reapplying the role updates its NodeSource repository and upgrades the system
+Node.js package to the latest available release. The default is Node.js 24 LTS;
+current OpenClaw needs 24.16+ on this series for correct SQLite text handling.
+Update inventories that explicitly select `22.x` to `24.x` when upgrading current
+OpenClaw. This changes the host runtime, including for other applications using
+the system `node` executable.
 
 ### Tailscale Configuration
 
@@ -233,7 +240,7 @@ openclaw_install_mode: release
 tailscale_authkey: "tskey-auth-k1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6"
 openclaw_ssh_keys:
   - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGxxxxxxxx admin@mgmt-server"
-nodejs_version: "22.x"
+nodejs_version: "24.x"
 ```
 
 ```bash
@@ -300,7 +307,7 @@ tailscale_authkey: "{{ lookup('env', 'TAILSCALE_AUTHKEY_PROD') }}"
 openclaw_ssh_keys:
   - "ssh-ed25519 AAAAC3... ops@prod-mgmt"
   - "ssh-ed25519 AAAAC3... admin@backup-server"
-nodejs_version: "22.x"
+nodejs_version: "24.x"
 ```
 
 ## Security Best Practices

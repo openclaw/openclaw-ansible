@@ -60,7 +60,7 @@ cd openclaw-ansible
 - Tailscale (mesh VPN)
 - UFW firewall (SSH + Tailscale ports only)
 - Docker CE + Compose V2 (for sandboxes)
-- Node.js 22.x + pnpm
+- Node.js 24.x LTS + pnpm
 - OpenClaw on host (not containerized)
 - Systemd user-service prerequisites (onboarding installs the Gateway service)
 
@@ -330,7 +330,7 @@ Edit `roles/openclaw/defaults/main.yml` before running the playbook.
 | `openclaw_repo_url` | `https://github.com/openclaw/openclaw.git` | Git repository (dev mode) |
 | `openclaw_repo_branch` | `main` | Git branch (dev mode) |
 | `tailscale_authkey` | `""` | Tailscale auth key for auto-connect |
-| `nodejs_version` | `22.x` | Node.js version to install |
+| `nodejs_version` | `24.x` | NodeSource release series to install and update |
 
 See [`roles/openclaw/defaults/main.yml`](roles/openclaw/defaults/main.yml) for the complete list.
 
