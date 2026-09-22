@@ -18,6 +18,10 @@ bash tests/run-tests.sh ubuntu2404
 
 The test harness runs three sequential tests:
 
+Before provisioning, `run-playbook-output.sh` checks the public wrapper's onboarding
+instructions and verifies that a failed playbook preserves its exit status without
+printing a success message. Its Ansible and sudo commands are stubbed.
+
 1. **Convergence**: Runs `run-playbook.sh` as root with `ci_test=true` to verify the public entrypoint completes without errors
 2. **Verification**: Runs `verify.yml` to assert the system is in the expected state
 3. **Idempotency**: Runs the playbook a second time and verifies `changed=0`

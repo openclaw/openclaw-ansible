@@ -52,45 +52,39 @@ fi
 if [ "$EUID" -eq 0 ]; then
     # Root needs no password prompt, but service-user tasks must still switch users.
     ansible-playbook "$PLAYBOOK" "$@"
-    PLAYBOOK_EXIT=$?
 else
     if sudo -n true 2>/dev/null; then
         echo "Passwordless sudo detected. Running without become password prompt."
         ansible-playbook "$PLAYBOOK" "$@"
-        PLAYBOOK_EXIT=$?
     else
         echo "Sudo password required. Prompting for become password."
         ansible-playbook "$PLAYBOOK" --ask-become-pass "$@"
-        PLAYBOOK_EXIT=$?
     fi
 fi
 
-# After playbook completes successfully, show instructions
-if [ $PLAYBOOK_EXIT -eq 0 ]; then
-    echo ""
-    echo "═══════════════════════════════════════════════════════════"
-    echo "✅ INSTALLATION COMPLETE!"
-    echo "═══════════════════════════════════════════════════════════"
-    echo ""
-    echo "🔄 SWITCH TO OPENCLAW USER with:"
-    echo ""
-    echo "    sudo su - ${OPENCLAW_USER}"
-    echo ""
-    echo "  OR (alternative):"
-    echo ""
-    echo "    sudo -u ${OPENCLAW_USER} -i"
-    echo ""
-    echo "This will switch you to the OpenClaw user with a proper"
-    echo "login shell (loads .bashrc, sets environment correctly)."
-    echo ""
-    echo "After switching, you'll see the next setup steps:"
-    echo "  • Configure OpenClaw (~/.openclaw/config.yml)"
-    echo "  • Login to messaging provider (WhatsApp/Telegram/Signal)"
-    echo "  • Test the gateway"
-    echo ""
-    echo "═══════════════════════════════════════════════════════════"
-    echo ""
-else
-    echo "❌ Playbook failed with exit code $PLAYBOOK_EXIT"
-    exit $PLAYBOOK_EXIT
-fi
+# set -e preserves a failed playbook's exit code before reaching this message.
+echo ""
+echo "═══════════════════════════════════════════════════════════"
+echo "✅ INSTALLATION COMPLETE!"
+echo "═══════════════════════════════════════════════════════════"
+echo ""
+echo "🔄 SWITCH TO OPENCLAW USER with:"
+echo ""
+echo "    sudo su - ${OPENCLAW_USER}"
+echo ""
+echo "  OR (alternative):"
+echo ""
+echo "    sudo -u ${OPENCLAW_USER} -i"
+echo ""
+echo "This will switch you to the OpenClaw user with a proper"
+echo "login shell (loads .bashrc, sets environment correctly)."
+echo ""
+echo "Then run onboarding:"
+echo ""
+echo "    openclaw onboard --install-daemon"
+echo ""
+echo "This configures OpenClaw and your messaging provider,"
+echo "then installs and starts the Gateway service."
+echo ""
+echo "═══════════════════════════════════════════════════════════"
+echo ""

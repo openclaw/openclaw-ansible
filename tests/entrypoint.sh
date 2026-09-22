@@ -4,6 +4,8 @@ set -euo pipefail
 # Keep task-level become_user active so pnpm runs as the service user, not root.
 PLAYBOOK_ARGS=(-e ci_test=true --connection=local)
 
+bash tests/run-playbook-output.sh
+
 # --- Step 1: Convergence ---
 echo "===> Step 1: Convergence test"
 bash run-playbook.sh "${PLAYBOOK_ARGS[@]}"
