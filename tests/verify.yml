@@ -27,11 +27,16 @@
       changed_when: false
 
     - name: Verify OpenClaw can discover plugins as the service user
-      ansible.builtin.command: "{{ openclaw_home }}/.local/bin/openclaw plugins list --json"
-      become: true
-      become_user: "{{ openclaw_user }}"
-      environment:
-        HOME: "{{ openclaw_home }}"
+      ansible.builtin.command:
+        argv:
+          - sudo
+          - -H
+          - -u
+          - "{{ openclaw_user }}"
+          - "{{ openclaw_home }}/.local/bin/openclaw"
+          - plugins
+          - list
+          - --json
       register: plugin_discovery
       changed_when: false
 
