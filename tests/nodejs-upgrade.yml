@@ -12,7 +12,6 @@
     - name: Refresh package metadata for the fresh container
       ansible.builtin.apt:
         update_cache: true
-        cache_valid_time: 3600
 
     - name: Install the previous Node.js default
       ansible.builtin.include_role:
