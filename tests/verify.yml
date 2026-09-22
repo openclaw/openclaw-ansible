@@ -26,6 +26,28 @@
       ansible.builtin.command: pnpm --version
       changed_when: false
 
+    - name: Verify OpenClaw can discover plugins as the service user
+      ansible.builtin.command:
+        argv:
+          - sudo
+          - -H
+          - -u
+          - "{{ openclaw_user }}"
+          - "{{ openclaw_home }}/.local/bin/openclaw"
+          - plugins
+          - list
+          - --json
+      register: plugin_discovery
+      changed_when: false
+
+    - name: Verify plugin manifests are accepted
+      ansible.builtin.assert:
+        that:
+          - (plugin_discovery.stdout | from_json).plugins | length > 0
+          - >-
+            (plugin_discovery.stdout | from_json).plugins
+            | selectattr('status', 'equalto', 'error') | list | length == 0
+
     - name: Verify openclaw directory structure
       ansible.builtin.stat:
         path: "{{ item.path }}"

@@ -1,0 +1,121 @@
+---
+- name: Verify Node.js upgrades and preservation of newer runtimes
+  hosts: localhost
+  connection: local
+  become: true
+  gather_facts: false
+
+  vars_files:
+    - ../roles/openclaw/defaults/main.yml
+
+  vars:
+    nodejs_test_initial_series: "22.x"
+    nodejs_test_expected_major: "24"
+
+  tasks:
+    - name: Refresh package metadata for the fresh container
+      ansible.builtin.apt:
+        update_cache: true
+
+    - name: Dry-run runtime setup before NodeSource exists
+      ansible.builtin.include_role:
+        name: openclaw
+        tasks_from: nodejs
+        apply:
+          check_mode: true
+
+    - name: Inspect paths after the fresh-host dry run
+      ansible.builtin.stat:
+        path: "{{ item }}"
+      loop:
+        - /usr/bin/node
+        - /etc/apt/keyrings/nodesource.gpg
+        - /etc/apt/sources.list.d/nodesource.list
+      register: nodejs_test_dry_paths
+
+    - name: Verify the fresh-host dry run did not install runtime files
+      ansible.builtin.assert:
+        that: not item.stat.exists
+      loop: "{{ nodejs_test_dry_paths.results }}"
+      loop_control:
+        label: "{{ item.item }}"
+
+    - name: Install the fixture Node.js series
+      ansible.builtin.include_role:
+        name: openclaw
+        tasks_from: nodejs
+      vars:
+        nodejs_version: "{{ nodejs_test_initial_series }}"
+
+    - name: Read the previous runtime version
+      ansible.builtin.command: node --version
+      register: previous_node
+      changed_when: false
+
+    - name: Verify the fixture starts on the requested Node.js series
+      ansible.builtin.assert:
+        that: previous_node.stdout.startswith('v' ~ nodejs_test_initial_series.split('.')[0] ~ '.')
+
+    - name: Dry-run a change to the default series
+      ansible.builtin.include_role:
+        name: openclaw
+        tasks_from: nodejs
+        apply:
+          check_mode: true
+
+    - name: Read the runtime after the upgrade dry run
+      ansible.builtin.command: node --version
+      register: nodejs_test_dry_version
+      changed_when: false
+
+    - name: Read the repository after the upgrade dry run
+      ansible.builtin.slurp:
+        src: /etc/apt/sources.list.d/nodesource.list
+      register: nodejs_test_dry_repository
+
+    - name: Verify the upgrade dry run preserves the installed runtime and channel
+      ansible.builtin.assert:
+        that:
+          - nodejs_test_dry_version.stdout == previous_node.stdout
+          - >-
+            ('node_' ~ nodejs_test_initial_series ~ ' nodistro main')
+            in (nodejs_test_dry_repository.content | b64decode)
+
+    - name: Apply the default Node.js configuration
+      ansible.builtin.include_role:
+        name: openclaw
+        tasks_from: nodejs
+
+    - name: Read the upgraded runtime version
+      ansible.builtin.command: node --version
+      register: upgraded_node
+      changed_when: false
+
+    - name: Verify the expected runtime is installed
+      ansible.builtin.assert:
+        that: upgraded_node.stdout.startswith('v' ~ nodejs_test_expected_major | string ~ '.')
+
+    - name: Read the managed NodeSource repository
+      ansible.builtin.slurp:
+        src: /etc/apt/sources.list.d/nodesource.list
+      register: nodejs_test_repository
+
+    - name: Verify updates still target the installed runtime series
+      ansible.builtin.assert:
+        that: >-
+          ('node_' ~ nodejs_test_expected_major | string ~ '.x')
+          in (nodejs_test_repository.content | b64decode)
+
+    - name: Verify SQLite preserves text containing an embedded NUL
+      ansible.builtin.command:
+        argv:
+          - node
+          - -e
+          - >-
+            const { DatabaseSync } = require('node:sqlite');
+            const db = new DatabaseSync(':memory:');
+            const value = 'before\0after';
+            const row = db.prepare('SELECT ? AS value').get(value);
+            db.close();
+            if (row.value !== value) throw new Error('SQLite truncated text at NUL');
+      changed_when: false
