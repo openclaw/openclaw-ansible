@@ -82,8 +82,10 @@ The pinned lint tools in `requirements-lint.txt` require Python 3.12 or newer; C
 python -m pip install -r requirements-lint.txt
 ansible-galaxy collection install -r requirements.yml
 yamllint .
-ansible-lint playbook.yml tests/docker-group-security.yml
+ansible-lint playbook.yml playbooks/*.yml tests/docker-group-security.yml
 ansible-playbook playbook.yml --syntax-check
+ansible-playbook playbooks/install.yml --syntax-check
+ansible-playbook playbooks/deploy.yml --syntax-check
 ansible-playbook tests/docker-group-security.yml --syntax-check
 ```
 
