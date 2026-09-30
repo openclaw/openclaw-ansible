@@ -6,6 +6,9 @@ PLAYBOOK_ARGS=(-e ci_test=true --connection=local)
 
 bash tests/run-playbook-output.sh
 
+echo "===> Upgrade from the previous Node.js default"
+ansible-playbook tests/nodejs-upgrade.yml
+
 # --- Step 1: Convergence ---
 echo "===> Step 1: Convergence test"
 bash run-playbook.sh "${PLAYBOOK_ARGS[@]}"

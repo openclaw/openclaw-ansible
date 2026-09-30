@@ -249,7 +249,7 @@ pnpm install -g openclaw@latest
 ```bash
 cd ~/code/openclaw
 
-# Check Node.js version (needs 22.x)
+# Check Node.js version (24.16+ on the default 24.x LTS series)
 node --version
 
 # Clean install

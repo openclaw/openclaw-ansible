@@ -10,7 +10,7 @@ tailscale_enabled: false  # Set to true to install and configure Tailscale
 tailscale_authkey: ""  # Optional: set to auto-connect during installation
 
 # Node.js version
-nodejs_version: "22.x"
+nodejs_version: "24.x"
 
 # OpenClaw settings
 openclaw_port: 3000

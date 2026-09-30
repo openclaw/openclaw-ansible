@@ -16,11 +16,21 @@ bash tests/run-tests.sh ubuntu2404
 
 ## Test Structure
 
-The test harness runs three sequential tests:
+Before convergence, `nodejs-upgrade.yml` installs the previous Node.js 22 default,
+reapplies the production tasks with the current default, and verifies both the
+major-version upgrade and SQLite text round-tripping across embedded NUL bytes.
+It also dry-runs the production tasks on a fresh host and before the upgrade,
+checking that neither the runtime nor its repository is changed. Check mode is
+applied at the role boundary, without relying on a global check-mode flag.
+This test requires a fresh disposable container; it changes the system runtime.
+After the full harness, a separate container starts with Node.js 26 and verifies
+that applying the Node.js 24 default preserves both Node.js 26 and its update channel.
 
 Before provisioning, `run-playbook-output.sh` checks the public wrapper's onboarding
 instructions and verifies that a failed playbook preserves its exit status without
 printing a success message. Its Ansible and sudo commands are stubbed.
+
+The test harness then runs three sequential tests:
 
 1. **Convergence**: Runs `run-playbook.sh` as root with `ci_test=true` to verify the public entrypoint completes without errors
 2. **Verification**: Runs `verify.yml` to assert the system is in the expected state
@@ -68,7 +78,7 @@ Everything else runs normally: package installation, user creation, Node.js/pnpm
 | UFW / iptables | ❌ No | Needs kernel access |
 | fail2ban / systemd | ❌ No | Needs running systemd |
 | Tailscale | ❌ No | Disabled by default already |
-| OpenClaw app install | ✅ Yes | Latest npm release and version check |
+| OpenClaw app install | ✅ Yes | Latest npm release, version check, and real plugin discovery as the service user |
 | Idempotency | ✅ Yes | Second run must have 0 changes |
 
 ## Exit Codes
@@ -86,11 +96,12 @@ The pinned lint tools in `requirements-lint.txt` require Python 3.12 or newer; C
 python -m pip install -r requirements-lint.txt
 ansible-galaxy collection install -r requirements.yml
 yamllint .
-ansible-lint playbook.yml playbooks/*.yml tests/docker-group-security.yml
+ansible-lint playbook.yml playbooks/*.yml tests/docker-group-security.yml tests/nodejs-upgrade.yml
 ansible-playbook playbook.yml --syntax-check
 ansible-playbook playbooks/install.yml --syntax-check
 ansible-playbook playbooks/deploy.yml --syntax-check
 ansible-playbook tests/docker-group-security.yml --syntax-check
+ansible-playbook tests/nodejs-upgrade.yml --syntax-check
 ```
 
 ### Additional Distributions

@@ -49,7 +49,7 @@ jobs:
         run: ansible-galaxy collection install -r requirements.yml
 
       - name: Run ansible-lint
-        run: ansible-lint playbook.yml playbooks/*.yml tests/docker-group-security.yml
+        run: ansible-lint playbook.yml playbooks/*.yml tests/docker-group-security.yml tests/nodejs-upgrade.yml
 
   syntax-check:
     name: Ansible Syntax Check
@@ -75,6 +75,7 @@ jobs:
           ansible-playbook playbooks/install.yml --syntax-check
           ansible-playbook playbooks/deploy.yml --syntax-check
           ansible-playbook tests/docker-group-security.yml --syntax-check
+          ansible-playbook tests/nodejs-upgrade.yml --syntax-check
 
   docker-group-security:
     name: Docker Group Security
