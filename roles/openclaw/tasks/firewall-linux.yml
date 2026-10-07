@@ -105,11 +105,14 @@
     comment: 'Tailscale'
   when: tailscale_enabled | bool
 
+# Field 5 is the device only for "default via <gateway> dev <if>".
+# A gateway-less route ("default dev ppp0 scope link") and a multipath
+# route put something else there, so take the token after "dev".
 - name: Get default network interface
   ansible.builtin.shell:
     cmd: |
       set -o pipefail
-      ip route | grep default | awk '{print $5}' | head -n1
+      ip route show default | awk '{for (i = 1; i < NF; i++) if ($i == "dev") { print $(i + 1); exit }}'
     executable: /bin/bash
   register: default_interface
   changed_when: false
@@ -119,8 +122,22 @@
     that:
       - default_interface.stdout is defined
       - default_interface.stdout | length > 0
+      - default_interface.stdout | length <= 15
+      - default_interface.stdout not in ['.', '..']
+      - default_interface.stdout is not search('[\s/:]')
     fail_msg: "Failed to detect default network interface. Cannot configure firewall rules safely."
     success_msg: "Default network interface detected: {{ default_interface.stdout }}"
+
+- name: Stat the detected default network interface
+  ansible.builtin.stat:
+    path: "/sys/class/net/{{ default_interface.stdout }}"
+  register: default_interface_sysfs
+
+- name: Require the detected default network interface to exist
+  ansible.builtin.assert:
+    that:
+      - default_interface_sysfs.stat.exists
+    fail_msg: "Detected default interface '{{ default_interface.stdout }}' is not a network interface."
 
 - name: Create UFW after.rules for Docker isolation
   ansible.builtin.blockinfile:

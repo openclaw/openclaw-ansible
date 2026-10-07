@@ -54,7 +54,14 @@ Custom iptables chain that prevents Docker from bypassing UFW:
 COMMIT
 ```
 
-**Result**: Even `docker run -p 80:80 nginx` won't expose port 80 externally.
+The role reads the first device following `dev` in the IPv4 default routes and
+checks that it exists in `/sys/class/net` before writing the rule. This supports
+gateway-less routes and multipath output, including interface names such as
+`_wan0`. The rule covers that selected interface; hosts with additional external
+interfaces need corresponding isolation rules for those interfaces.
+
+**Result**: Even `docker run -p 80:80 nginx` won't expose port 80 through the
+selected external interface.
 
 ### Native Gateway and Container Binding
 

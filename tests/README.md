@@ -47,6 +47,16 @@ local file and an external symlink target retain their contents and permissions.
 
 ## CI Test Mode
 
+The separate Firewall Default Route job runs `sudo env "PATH=$PATH" bash
+tests/default-route-interface.sh` on a disposable Linux runner with Ansible,
+iproute2, iptables, and curl. It uses an isolated network namespace to execute the production route
+parser, interface validation, sysfs lookup, and UFW rule renderer against gateway,
+gateway-less, underscore-prefixed, and multipath routes. Every case reapplies with
+zero changes; a missing route must fail before writing isolation rules. A real
+HTTP server in a separate namespace verifies that the generated DOCKER-USER rules
+block new forwarded connections from an external client while host-local requests
+still succeed. It leaves the host's routes and UFW files untouched.
+
 The `ci_test` variable skips tasks that require:
 - Docker-in-Docker (Docker CE installation)
 - Kernel access (UFW/iptables firewall)

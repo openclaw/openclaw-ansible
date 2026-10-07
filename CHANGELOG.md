@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Update ansible-core to 2.21.5 for developer checks and CI.
+- Detect the device after the default route's `dev` token so gateway-less and multipath routes configure Docker isolation correctly, including underscore-prefixed interfaces. Thanks @SebTardif.
 - Point installer completion instructions to onboarding and remove unused legacy setup scripts.
 - Validate the standalone deployment playbook in CI and correct task-order guidance. Thanks @goutamadwant for the fix and @tosin2013 for the report.
 - Preserve service-user privilege switching when either installer script is launched as root, and repair existing root-owned development checkouts before updating and building as the service user.
