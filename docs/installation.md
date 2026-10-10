@@ -25,10 +25,38 @@ to files outside the checkout.
 
 ### Prerequisites
 
+Ansible-core 2.14 or newer is required (`meta/runtime.yml`). On Debian 12+ and
+Ubuntu 24.04+, the distro package is new enough:
+
 ```bash
 sudo apt update
 sudo apt install -y ansible git
+ansible-playbook --version   # first line must show [core 2.14] or newer
 ```
+
+On Ubuntu 22.04 and Debian 11, the distro Ansible package is too old. Install
+Ansible in a virtual environment using the distro's Python (3.9 or newer), then
+select both Ansible commands from that environment:
+
+```bash
+sudo apt update
+sudo apt install -y python3-venv git
+python3 -m venv "$HOME/.local/share/openclaw-ansible"
+"$HOME/.local/share/openclaw-ansible/bin/python" -m pip install 'ansible-core>=2.14'
+export PATH="$HOME/.local/share/openclaw-ansible/bin:$PATH"
+ansible-playbook --version
+ansible-galaxy --version
+```
+
+Run `install.sh` from this shell without prefixing it with `sudo`; it requests
+sudo only for system operations. Both version banners must report core 2.14 or
+newer. Pip selects a release compatible with the environment's Python.
+
+Ubuntu 20.04's default Python 3.8 cannot run ansible-core 2.14. For the local
+bootstrap, upgrade to Ubuntu 24.04 first. Alternatively, provision the older
+target from a separate supported Ansible controller using the
+[remote inventory workflow](../README.md#installation-as-ansible-collection).
+Installing with the default `pip3` on Ubuntu 20.04 does not satisfy the requirement.
 
 ### Clone and Run
 

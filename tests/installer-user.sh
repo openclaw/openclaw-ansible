@@ -24,6 +24,9 @@ echo 'openclaw.installer 1.0.0'
 EOF
 cat > "$TEST_DIR/bin/ansible-playbook" <<'EOF'
 #!/usr/bin/env bash
+if [ "${1:-}" = --version ]; then
+    exec "$INSTALLER_TEST_ANSIBLE" "$@"
+fi
 exec "$INSTALLER_TEST_ANSIBLE" "$INSTALLER_TEST_PLAYBOOK" "${@:2}"
 EOF
 chmod +x "$TEST_DIR/bin/ansible-galaxy" "$TEST_DIR/bin/ansible-playbook"

@@ -279,9 +279,14 @@ ansible-playbook playbook.yml --ask-become-pass
 
 ## Requirements
 
-- Debian 11+ or Ubuntu 20.04+
+- Debian 11+ or Ubuntu 20.04+ target
+- Ansible controller running ansible-core 2.14 or newer
 - Root/sudo access
 - Internet connection
+
+Debian 12+ and Ubuntu 24.04+ provide a suitable controller through apt. Older
+distributions need a compatible controller before running the installer; see
+the [controller prerequisites and recovery steps](docs/installation.md#prerequisites).
 
 ## Configuration Options
 
