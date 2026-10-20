@@ -370,5 +370,6 @@ MIT - see [LICENSE](LICENSE)
 
 ## Support
 
-- OpenClaw: https://github.com/openclaw/openclaw
-- This installer: https://github.com/openclaw/openclaw-ansible/issues
+- Official OpenClaw support for installation, setup, and usage: https://community.openclaw.ai/
+- Reproducible OpenClaw bugs: https://github.com/openclaw/openclaw/issues
+- Reproducible installer bugs: https://github.com/openclaw/openclaw-ansible/issues
