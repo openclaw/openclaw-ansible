@@ -22,6 +22,9 @@ bash tests/installer-user.sh
 echo "===> Existing development checkout upgrade"
 bash tests/development-upgrade.sh
 
+echo "===> Existing Node and native pnpm security upgrade"
+ansible-playbook tests/nodejs-upgrade.yml "${PLAYBOOK_ARGS[@]}"
+
 # --- Step 3: Idempotency ---
 echo "===> Step 3: Idempotency test"
 IDEMPOTENCY_OUT=$(ansible-playbook playbook.yml "${PLAYBOOK_ARGS[@]}" 2>&1)

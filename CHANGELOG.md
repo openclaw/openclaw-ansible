@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Refresh Node.js patches within the configured NodeSource major and update affected native pnpm 12 installations to 12.15.0 so installer reruns apply the compromised-CA key rejection fixes; retain existing pnpm 10/11 installations.
+
 - Update ansible-lint to 26.10.1 and refresh pinned artifact and GitHub App token actions.
 - Restrict passwordless journal access to exact OpenClaw log commands, including on existing installations; wider queries require administrator-managed permissions. Thanks @SebTardif.
 - Update ansible-core to 2.21.5 for developer checks and CI.
