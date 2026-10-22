@@ -38,6 +38,8 @@
     update_cache: true
     # Runtime security updates must see newly published patches on a rerun.
     cache_valid_time: 0
+  # Refreshing package metadata does not change the managed runtime.
+  changed_when: false
 
 - name: Install Node.js
   ansible.builtin.apt:

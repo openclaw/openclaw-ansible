@@ -27,6 +27,8 @@ ansible-playbook tests/nodejs-upgrade.yml "${PLAYBOOK_ARGS[@]}"
 
 # --- Step 3: Idempotency ---
 echo "===> Step 3: Idempotency test"
+# A later APT cache timestamp must not make an unchanged runtime report a change.
+sleep 2
 IDEMPOTENCY_OUT=$(ansible-playbook playbook.yml "${PLAYBOOK_ARGS[@]}" 2>&1)
 echo "$IDEMPOTENCY_OUT"
 
