@@ -1,0 +1,35 @@
+---
+- name: Verify existing Node and native pnpm installations receive security patches
+  hosts: localhost
+  connection: local
+  become: true
+  gather_facts: false
+  vars:
+    nodejs_version: '22.x'
+  tasks:
+    - name: Prepare the NodeSource installation
+      ansible.builtin.import_tasks: ../roles/openclaw/tasks/nodejs.yml
+
+    - name: Restore the affected Node package in the disposable test environment
+      ansible.builtin.apt:
+        name: nodejs=22.23.3-1nodesource1
+        state: present
+        allow_downgrade: true
+
+    - name: Restore affected native pnpm in the disposable test environment
+      ansible.builtin.command: npm install -g pnpm@12.14.0
+      changed_when: true
+
+    - name: Reapply the production runtime tasks
+      ansible.builtin.import_tasks: ../roles/openclaw/tasks/nodejs.yml
+
+    - name: Require a fixed Node patch within the existing major
+      ansible.builtin.assert:
+        that:
+          - node_version.stdout is match('^v22[.]')
+          - node_version.stdout[1:] is version('22.23.4', '>=')
+
+    - name: Require native pnpm with the independent key rejection fix
+      ansible.builtin.assert:
+        that:
+          - pnpm_version.stdout is version('12.15.0', '>=')

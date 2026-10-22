@@ -38,6 +38,12 @@ and pnpm against a small local project. It starts with a root-owned checkout and
 build output, verifies the build runs as `openclaw`, and checks that a private
 local file and an external symlink target retain their contents and permissions.
 
+`nodejs-upgrade.yml` restores affected Node 22.23.3 and native pnpm 12.14.0,
+reapplies the production runtime tasks, and requires their security patches.
+Run it only as root in a disposable Linux environment using NodeSource 22.x:
+`ansible-playbook tests/nodejs-upgrade.yml`. It deliberately downgrades the test
+runtimes before checking the upgrade and requires internet access.
+
 ## Files
 
 - `Dockerfile.ubuntu2404` - Ubuntu 24.04 container with Ansible pre-installed
