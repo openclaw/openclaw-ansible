@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Keep `~/.openclaw` and `~/.config` private (0700), including on existing installations, so `openclaw onboard --install-daemon` can install the Gateway user service and `openclaw security audit` no longer reports a readable state directory.
 - Refresh Node.js patches within the configured NodeSource major and update affected native pnpm 12 installations to 12.15.0 so installer reruns apply the compromised-CA key rejection fixes; retain existing pnpm 10/11 installations.
 
 - Update ansible-lint to 26.10.1 and refresh pinned artifact and GitHub App token actions.
