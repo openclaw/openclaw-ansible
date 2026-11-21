@@ -30,7 +30,7 @@
       ansible.builtin.stat:
         path: "{{ item.path }}"
       loop:
-        - { path: "{{ openclaw_home }}/.openclaw", mode: "0755" }
+        - { path: "{{ openclaw_home }}/.openclaw", mode: "0700" }
         - { path: "{{ openclaw_home }}/.openclaw/sessions" }
         - { path: "{{ openclaw_home }}/.openclaw/credentials", mode: "0700" }
         - { path: "{{ openclaw_home }}/.openclaw/data" }
@@ -40,6 +40,7 @@
         - { path: "{{ openclaw_home }}/.openclaw/agents/main/agent", mode: "0700" }
         - { path: "{{ openclaw_home }}/.openclaw/workspace" }
         - { path: "{{ openclaw_home }}/.ssh", mode: "0700" }
+        - { path: "{{ openclaw_home }}/.config", mode: "0700" }
       register: dir_checks
 
     - name: Assert directories exist
@@ -53,9 +54,11 @@
     - name: Assert restricted directories have correct permissions
       ansible.builtin.assert:
         that:
+          - dir_checks.results[0].stat.mode == '0700'
           - dir_checks.results[2].stat.mode == '0700'
           - dir_checks.results[7].stat.mode == '0700'
-        fail_msg: "credentials and agents/main/agent dirs should be 0700"
+          - dir_checks.results[10].stat.mode == '0700'
+        fail_msg: "~/.openclaw, credentials, agents/main/agent and ~/.config dirs should be 0700"
 
     - name: Verify sudoers file exists and is valid
       ansible.builtin.command: "visudo -cf /etc/sudoers.d/{{ openclaw_user }}"
