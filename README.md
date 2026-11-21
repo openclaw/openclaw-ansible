@@ -74,6 +74,10 @@ sudo su - openclaw
 
 Then run the quick-start onboarding wizard:
 
+The installer keeps `~/.openclaw` and `~/.config` private to the service user
+(0700), including when repairing existing installations. This protects local
+state and lets onboarding safely create the Gateway user service.
+
 ```bash
 openclaw onboard --install-daemon
 ```
